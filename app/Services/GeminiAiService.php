@@ -113,13 +113,17 @@ class GeminiAiService
                     ],
                     [
                         'name' => 'calculate_estimate',
-                        'description' => 'Calculate instant quotation for a customer with weight, metal, purity, making charges, and 3% GST.',
+                        'description' => 'Calculate instant quotation or estimate for a customer either by showroom product barcode (e.g. G00075) or by custom weight, metal, purity (e.g. 916 Hallmark / 22K), making charges, and 3% GST.',
                         'parameters' => [
                             'type' => 'OBJECT',
                             'properties' => [
+                                'barcode' => [
+                                    'type' => 'STRING',
+                                    'description' => 'Showroom product barcode or item code (e.g. G00075, S00010) to automatically fetch item weight, purity, and making charges from inventory',
+                                ],
                                 'weight' => [
                                     'type' => 'NUMBER',
-                                    'description' => 'Weight in grams',
+                                    'description' => 'Weight in grams (optional if barcode provided)',
                                 ],
                                 'metal' => [
                                     'type' => 'STRING',
@@ -127,18 +131,17 @@ class GeminiAiService
                                 ],
                                 'purity' => [
                                     'type' => 'STRING',
-                                    'description' => 'Purity (e.g. 22K, 18K, 24K)',
+                                    'description' => 'Purity (e.g. 916 Hallmark, 22K, 18K, 14K, 24K, Silver)',
                                 ],
                                 'making_percent' => [
                                     'type' => 'NUMBER',
-                                    'description' => 'Making charges percentage on metal value (default 12 for 12%)',
+                                    'description' => 'Making charges percentage on metal value (optional override)',
                                 ],
                                 'making_charge_per_gram' => [
                                     'type' => 'NUMBER',
-                                    'description' => 'Making charges per gram in INR (optional, only if user explicitly asks for per gram)',
+                                    'description' => 'Making charges per gram in INR (optional override)',
                                 ],
                             ],
-                            'required' => ['weight'],
                         ],
                     ],
                     [
@@ -355,8 +358,18 @@ class GeminiAiService
            - discount_amount
            - payment_mode (CASH, UPI, CARD, BANK_TRANSFER, UNPAID)
 
-        ESTIMATE QUOTATION FLOW:
-        - If weight is missing: Ask 'Kitne gram aur kaunsi purity (e.g. 15g 22K) ka quotation nikalna hai?'
+        ESTIMATE QUOTATION & BARCODE FLOW:
+        - When a user asks for an estimate / quotation by barcode (e.g. 'G00075 ka estimate bana do', 'G00075 barcode ka quotation nikalo', 'is barcode ka estimate'):
+          - Call `calculate_estimate` with `barcode: 'G00075'`. The ERP will automatically load the item's name, net weight, purity (e.g. 916 Hallmark / 22K), making charges, and calculate with today's live rate!
+        - When a user asks for an estimate with custom weight/purity (e.g. '15g 22k gold chain ka estimate'):
+          - Call `calculate_estimate` with weight, metal, purity.
+        - If neither barcode nor weight is provided: Ask 'Item ka barcode batayein, ya kitne gram aur kaunsi purity (e.g. 15g 22K / 916) ka quotation nikalna hai?'
+        - Hallmarking & Purity Standards Knowledge:
+          - 916 Hallmark / 916 = 22 Karat (22K) -> 91.6% pure gold
+          - 750 Hallmark / 750 = 18 Karat (18K) -> 75.0% pure gold
+          - 585 Hallmark / 585 = 14 Karat (14K) -> 58.5% pure gold
+          - 999 / 24K = 24 Karat (24K) -> 99.9% fine gold
+          - Silver = Silver 999 purity
 
         STOCK PRODUCT ADDITION:
         - If weight/name is missing: Ask 'Product ka naam aur gross weight (grams) kya hai?'
