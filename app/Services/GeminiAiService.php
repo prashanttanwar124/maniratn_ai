@@ -270,18 +270,48 @@ class GeminiAiService
         }
 
         $contents = [];
+        $lastRole = null;
 
         foreach ($conversationHistory as $turn) {
-            $contents[] = [
-                'role' => $turn['role'] === 'user' ? 'user' : 'model',
-                'parts' => [['text' => $turn['content']]],
-            ];
+            $text = trim((string) ($turn['content'] ?? $turn['message'] ?? ''));
+            if ($text === '') {
+                continue;
+            }
+
+            $role = (($turn['role'] ?? '') === 'user') ? 'user' : 'model';
+
+            // Google Gemini rule: First turn must be 'user'
+            if (empty($contents) && $role === 'model') {
+                continue;
+            }
+
+            // Google Gemini rule: Merge consecutive same-role turns
+            if ($role === $lastRole) {
+                $lastIdx = count($contents) - 1;
+                $contents[$lastIdx]['parts'][0]['text'] .= "\n" . $text;
+            } else {
+                $contents[] = [
+                    'role' => $role,
+                    'parts' => [['text' => $text]],
+                ];
+                $lastRole = $role;
+            }
         }
 
-        $contents[] = [
-            'role' => 'user',
-            'parts' => [['text' => $userMessage]],
-        ];
+        $currentUserText = trim($userMessage);
+        if ($currentUserText === '') {
+            $currentUserText = 'Hello';
+        }
+
+        if ($lastRole === 'user' && ! empty($contents)) {
+            $lastIdx = count($contents) - 1;
+            $contents[$lastIdx]['parts'][0]['text'] .= "\n" . $currentUserText;
+        } else {
+            $contents[] = [
+                'role' => 'user',
+                'parts' => [['text' => $currentUserText]],
+            ];
+        }
 
         $systemInstruction = "You are 'Karat AI', the voice and POS operations copilot for Maniratn Jewellers & KaratSetu ERP.
         You assist showroom staff with retail billing, rates, stock inventory, and estimations following the exact POS showroom workflow.

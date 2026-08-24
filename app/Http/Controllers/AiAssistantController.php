@@ -210,6 +210,10 @@ class AiAssistantController extends Controller
 
         $result = $this->geminiService->chat($userMessage, $history, $voice, $includeAudio);
 
+        $replyMessage = ! empty($result['reply'])
+            ? $result['reply']
+            : (! empty($result['actions']) ? 'Aapke command ke anusar action draft prepare kar diya hai.' : 'Done');
+
         // 2. Log Assistant Response into Database
         AiChatLog::create([
             'api_key_id' => $matchedKey?->id,
@@ -217,7 +221,7 @@ class AiAssistantController extends Controller
             'store_url' => $storeUrl,
             'session_id' => $sessionId,
             'role' => 'assistant',
-            'message' => $result['reply'] ?? '',
+            'message' => $replyMessage,
             'actions' => $result['actions'] ?? [],
             'has_audio' => ! empty($result['audio']),
             'audio_url' => $result['audio'] ?? null,
@@ -249,7 +253,7 @@ class AiAssistantController extends Controller
             }
         }
 
-        $query = AiChatLog::query();
+        $query = AiChatLog::whereNotNull('message')->where('message', '!=', '');
         if ($matchedKey) {
             $query->where('api_key', $matchedKey->key);
         } else {
