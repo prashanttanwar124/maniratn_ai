@@ -208,21 +208,37 @@ class GeminiAiService
                     ],
                     [
                         'name' => 'check_stock',
-                        'description' => 'Search and check available unsold jewellery inventory/stock in showroom database by name, category, metal, or barcode.',
+                        'description' => 'Search and check available unsold jewellery inventory/stock in showroom database by ornament name, category, target weight (grams), weight range (min/max), purity, metal, or barcode.',
                         'parameters' => [
                             'type' => 'OBJECT',
                             'properties' => [
-                                'query' => [
-                                    'type' => 'STRING',
-                                    'description' => 'Ornament name, category, or barcode to search (e.g. Ring, Chain, MN-G-1024)',
-                                ],
                                 'category' => [
                                     'type' => 'STRING',
-                                    'description' => 'Category filter (e.g. Ring, Chain, Bangle, Necklace, Silver Payal)',
+                                    'description' => 'Category filter (e.g. Chain, Ring, Bangle, Necklace, Pendant, Earrings, Coin, Silver Payal)',
+                                ],
+                                'weight' => [
+                                    'type' => 'NUMBER',
+                                    'description' => 'Target weight in grams to search for (e.g. 3, 5, 14.5)',
+                                ],
+                                'min_weight' => [
+                                    'type' => 'NUMBER',
+                                    'description' => 'Minimum weight in grams (e.g. 2)',
+                                ],
+                                'max_weight' => [
+                                    'type' => 'NUMBER',
+                                    'description' => 'Maximum weight in grams (e.g. 10)',
+                                ],
+                                'purity' => [
+                                    'type' => 'STRING',
+                                    'description' => 'Purity filter (e.g. 22K, 18K, 24K, Silver)',
                                 ],
                                 'metal' => [
                                     'type' => 'STRING',
                                     'description' => 'Metal filter: GOLD or SILVER',
+                                ],
+                                'query' => [
+                                    'type' => 'STRING',
+                                    'description' => 'Keyword or barcode to search (e.g. G00019, Antique, Royal)',
                                 ],
                             ],
                         ],
@@ -344,6 +360,15 @@ class GeminiAiService
 
         STOCK PRODUCT ADDITION:
         - If weight/name is missing: Ask 'Product ka naam aur gross weight (grams) kya hai?'
+
+        INVENTORY & STOCK SEARCH WORKFLOW:
+        - When the user asks to check or find stock (e.g. 'mere pass 3 gram ki chain batao', '10g ke rings dikhao', 'silver payal kitni hain'):
+          - Call `check_stock` with the extracted parameters:
+            - `category` (e.g. 'Chain', 'Ring', 'Bangle', 'Payal', 'Earrings')
+            - `weight` (e.g. 3, 10, 14.5)
+            - `metal` ('GOLD' or 'SILVER')
+            - `purity` (if mentioned, e.g. '22K', '18K')
+          - Always focus strictly on the requested category and weight!
 
         HUMAN-IN-THE-LOOP SAFETY & PREVIEW RULES:
         - When calling `create_bill`, `add_product`, or `update_daily_rates`, the ERP system will FIRST present an interactive editable preview draft in the UI.
