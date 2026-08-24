@@ -46,5 +46,9 @@ Route::middleware('auth')->group(function () {
 // Public Voice & Tool Calling Endpoints (Secured via Bearer Secret Token in Controller)
 Route::post('/ai/chat', [AiAssistantController::class, 'chat'])->name('ai.chat');
 Route::post('/api/ai/chat', [AiAssistantController::class, 'chat'])->name('api.ai.chat');
+Route::get('/ai/history', [AiAssistantController::class, 'getHistory'])->name('ai.history');
+Route::get('/api/ai/history', [AiAssistantController::class, 'getHistory'])->name('api.ai.history');
+Route::delete('/api/ai/history', [AiAssistantController::class, 'clearHistory'])->name('api.ai.history.clear');
 Route::post('/api/ai/tts', [AiAssistantController::class, 'tts'])->name('api.ai.tts');
+
 

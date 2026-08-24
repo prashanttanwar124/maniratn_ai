@@ -2,20 +2,26 @@
 import axios from 'axios';
 import AppLayout from '@/layout/AppLayout.vue';
 import Button from 'primevue/button';
+import Column from 'primevue/column';
+import DataTable from 'primevue/datatable';
 import Dialog from 'primevue/dialog';
 import InputText from 'primevue/inputtext';
 import Select from 'primevue/select';
+import Tag from 'primevue/tag';
 import {
     Activity,
     Bot,
     Check,
+    Clock,
     Coins,
     Copy,
     Database,
     Eye,
     EyeOff,
+    Globe,
     Key,
     Layers,
+    MessageSquare,
     Mic,
     MicOff,
     Plus,
@@ -54,6 +60,7 @@ interface StatsData {
     active_tenants: number;
     total_tenants: number;
     voice_tenants: number;
+    total_chat_messages?: number;
 }
 
 const props = defineProps<{
@@ -61,10 +68,11 @@ const props = defineProps<{
     apiKeys: ApiKeyItem[];
     stats: StatsData;
     samplePrompts: string[];
+    recentLogs?: any[];
 }>();
 
 // Navigation Tabs
-const activeTab = ref<'tokens' | 'playground' | 'docs'>('tokens');
+const activeTab = ref<'tokens' | 'playground' | 'logs' | 'docs'>('tokens');
 
 // Options for PrimeVue Selects
 const typeOptions = [
@@ -80,6 +88,7 @@ const planOptions = [
 
 // API Keys State
 const keyList = ref<ApiKeyItem[]>(props.apiKeys || []);
+const recentLogsList = ref<any[]>(props.recentLogs || []);
 const isCreateModalOpen = ref(false);
 const isSubmittingKey = ref(false);
 const copiedKeyId = ref<number | null>(null);
@@ -413,6 +422,23 @@ onMounted(() => {
                     >
                         <Bot class="w-3.5 h-3.5 text-[#c08f34]" />
                         <span>Voice Studio Playground</span>
+                    </button>
+
+                    <button
+                        type="button"
+                        :class="[
+                            'px-4 py-2 text-xs font-bold flex items-center gap-2 transition-all cursor-pointer border',
+                            activeTab === 'logs'
+                                ? 'bg-white text-[#1c3633] border-surface-300 shadow-xs'
+                                : 'bg-transparent text-surface-600 border-transparent hover:text-[#1c3633]',
+                        ]"
+                        @click="activeTab = 'logs'"
+                    >
+                        <MessageSquare class="w-3.5 h-3.5 text-[#c08f34]" />
+                        <span>Live Chat Stream & Logs</span>
+                        <span class="px-1.5 py-0.2 text-[10px] bg-[#1c3633]/10 text-[#1c3633] font-mono font-bold">
+                            {{ (recentLogsList || []).length }}
+                        </span>
                     </button>
 
                     <button
@@ -817,8 +843,102 @@ onMounted(() => {
                 </div>
             </div>
 
-            <!-- TAB 3: DOCUMENTATION & API USAGE -->
-            <div v-else-if="activeTab === 'docs'" class="space-y-4">
+            <!-- 💬 TAB 3: Live Chat Stream & Showroom Conversation Logs -->
+            <div v-if="activeTab === 'logs'" class="space-y-4 animate-in fade-in duration-200">
+                <div class="p-5 bg-white border border-surface-200 shadow-xs flex items-center justify-between flex-wrap gap-4">
+                    <div>
+                        <h2 class="text-sm font-bold text-[#1c3633] uppercase tracking-wider font-serif flex items-center gap-2">
+                            <MessageSquare class="w-4 h-4 text-[#c08f34]" />
+                            <span>Live Showroom Conversation Stream</span>
+                        </h2>
+                        <p class="text-xs text-surface-500 mt-0.5">
+                            Real-time chat queries & responses logged across all connected ERP store instances.
+                        </p>
+                    </div>
+
+                    <div class="flex items-center gap-3">
+                        <Tag :value="`${(recentLogsList || []).length} Recent Records`" severity="contrast" />
+                    </div>
+                </div>
+
+                <div class="p-4 bg-white border border-surface-200 shadow-xs">
+                    <DataTable :value="recentLogsList" stripedRows rowHover tableStyle="min-width: 55rem">
+                        <template #empty>
+                            <div class="py-12 text-center text-surface-500 text-xs">
+                                No showroom chat logs recorded yet. Send queries from KaratSetu ERP Copilot to stream them here.
+                            </div>
+                        </template>
+
+                        <Column header="Sender" style="width: 140px">
+                            <template #body="{ data }">
+                                <div class="flex items-center gap-2">
+                                    <div
+                                        :class="[
+                                            'w-7 h-7 flex items-center justify-center text-xs font-bold shrink-0',
+                                            data.role === 'user' ? 'bg-[#1c3633] text-white' : 'bg-[#f4ece1] text-[#9b6f1e] border border-[#e8d5b5]',
+                                        ]"
+                                    >
+                                        <Bot v-if="data.role === 'assistant'" class="w-3.5 h-3.5" />
+                                        <span v-else>U</span>
+                                    </div>
+                                    <span class="text-xs font-bold" :class="data.role === 'user' ? 'text-surface-800' : 'text-[#c08f34]'">
+                                        {{ data.role === 'user' ? 'Customer/Staff' : 'Karat AI' }}
+                                    </span>
+                                </div>
+                            </template>
+                        </Column>
+
+                        <Column header="Showroom / Origin" style="width: 220px">
+                            <template #body="{ data }">
+                                <div>
+                                    <div class="font-semibold text-surface-900 text-xs">{{ data.store_name }}</div>
+                                    <div class="text-[10px] text-surface-400 font-mono mt-0.5 truncate max-w-[200px]" :title="data.store_url">
+                                        {{ data.store_url }}
+                                    </div>
+                                </div>
+                            </template>
+                        </Column>
+
+                        <Column field="message" header="Message / Executed Action">
+                            <template #body="{ data }">
+                                <div class="space-y-1 py-1">
+                                    <p class="text-xs text-surface-800 leading-relaxed font-medium">
+                                        {{ data.message }}
+                                    </p>
+                                    <div v-if="data.actions && data.actions.length" class="flex flex-wrap gap-1 mt-1">
+                                        <Tag
+                                            v-for="(act, i) in data.actions"
+                                            :key="i"
+                                            :value="`Tool: ${act.tool}`"
+                                            severity="secondary"
+                                            class="text-[10px]"
+                                        />
+                                    </div>
+                                </div>
+                            </template>
+                        </Column>
+
+                        <Column header="Audio" style="width: 100px">
+                            <template #body="{ data }">
+                                <Tag v-if="data.has_audio" value="HD Voice" severity="success" class="text-[10px]" />
+                                <span v-else class="text-[10px] text-surface-400">Text Only</span>
+                            </template>
+                        </Column>
+
+                        <Column header="Time" style="width: 160px">
+                            <template #body="{ data }">
+                                <div>
+                                    <div class="text-xs font-medium text-surface-700">{{ data.created_at }}</div>
+                                    <div class="text-[10px] text-surface-400">{{ data.time_exact }}</div>
+                                </div>
+                            </template>
+                        </Column>
+                    </DataTable>
+                </div>
+            </div>
+
+            <!-- 📖 TAB 4: Integration Guide & Docs -->
+            <div v-else-if="activeTab === 'docs'" class="space-y-4 animate-in fade-in duration-200">
                 <div class="bg-white p-4 border border-surface-200 shadow-xs">
                     <h2 class="text-sm font-bold text-[#1c3633] uppercase tracking-wider">Central Hub Architecture & API Integration</h2>
                     <p class="text-xs text-surface-500 mt-0.5">

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\AiApiKey;
+use App\Models\AiChatLog;
 use App\Services\GeminiAiService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -25,15 +26,35 @@ class AiAssistantController extends Controller
         $activeTenants = AiApiKey::where('is_active', true)->count();
         $totalTenants = AiApiKey::count();
         $voiceTenants = AiApiKey::where('voice_enabled', true)->count();
+        $totalChatMessages = AiChatLog::count();
+
+        $recentLogs = AiChatLog::with('apiKey:id,key,business_name')
+            ->orderByDesc('id')
+            ->take(25)
+            ->get()
+            ->map(fn ($log) => [
+                'id' => $log->id,
+                'role' => $log->role,
+                'message' => $log->message,
+                'store_name' => $log->apiKey?->business_name ?? 'Local Admin Studio',
+                'store_url' => $log->store_url ?: 'http://127.0.0.1:8000',
+                'api_key' => $log->api_key,
+                'actions' => $log->actions,
+                'has_audio' => $log->has_audio,
+                'created_at' => $log->created_at->diffForHumans(),
+                'time_exact' => $log->created_at->format('d M Y, h:i A'),
+            ]);
 
         return Inertia::render('AiStudio', [
             'appName' => config('app.name', 'Maniratn AI Hub'),
             'apiKeys' => $apiKeys,
+            'recentLogs' => $recentLogs,
             'stats' => [
                 'total_queries' => $totalQueries,
                 'active_tenants' => $activeTenants,
                 'total_tenants' => $totalTenants,
                 'voice_tenants' => $voiceTenants,
+                'total_chat_messages' => $totalChatMessages,
             ],
             'samplePrompts' => [
                 'Aaj 22K gold aur silver ka bhav kya hai?',
@@ -163,15 +184,136 @@ class AiAssistantController extends Controller
         $history = $request->input('history', []);
         $voice = $request->input('voice', 'Aoede');
         $includeAudio = $request->boolean('include_audio', true);
+        $storeUrl = $request->input('store_url') ?: $request->header('Origin') ?: $request->header('Referer') ?: 'http://127.0.0.1:8000';
+        $sessionId = $request->input('session_id', 'default_session');
 
         // If tenant disabled voice, override include_audio
         if ($matchedKey && ! $matchedKey->voice_enabled) {
             $includeAudio = false;
         }
 
+        // 1. Log User Message into Database
+        AiChatLog::create([
+            'api_key_id' => $matchedKey?->id,
+            'api_key' => $matchedKey?->key ?? 'web_admin',
+            'store_url' => $storeUrl,
+            'session_id' => $sessionId,
+            'role' => 'user',
+            'message' => $userMessage,
+            'actions' => null,
+            'has_audio' => false,
+            'metadata' => [
+                'ip' => $request->ip(),
+                'user_agent' => substr((string) $request->userAgent(), 0, 150),
+            ],
+        ]);
+
         $result = $this->geminiService->chat($userMessage, $history, $voice, $includeAudio);
 
+        // 2. Log Assistant Response into Database
+        AiChatLog::create([
+            'api_key_id' => $matchedKey?->id,
+            'api_key' => $matchedKey?->key ?? 'web_admin',
+            'store_url' => $storeUrl,
+            'session_id' => $sessionId,
+            'role' => 'assistant',
+            'message' => $result['reply'] ?? '',
+            'actions' => $result['actions'] ?? [],
+            'has_audio' => ! empty($result['audio']),
+            'audio_url' => $result['audio'] ?? null,
+            'metadata' => [
+                'cached' => $result['cached'] ?? false,
+            ],
+        ]);
+
         return response()->json($result);
+    }
+
+    /**
+     * Get paginated chat history for ERP client (Last 10 chats, with load more pagination)
+     */
+    public function getHistory(Request $request): JsonResponse
+    {
+        $bearerToken = $request->bearerToken();
+        $apiKeyParam = $request->input('api_key', $bearerToken);
+
+        if (empty($apiKeyParam) && ! auth()->check()) {
+            return response()->json(['error' => 'Unauthorized'], 401);
+        }
+
+        $matchedKey = null;
+        if (! empty($apiKeyParam)) {
+            $matchedKey = AiApiKey::where('key', $apiKeyParam)->first();
+            if (! $matchedKey) {
+                return response()->json(['error' => 'Invalid API Key'], 401);
+            }
+        }
+
+        $query = AiChatLog::query();
+        if ($matchedKey) {
+            $query->where('api_key', $matchedKey->key);
+        } else {
+            $query->where('api_key', 'web_admin');
+        }
+
+        if ($request->filled('session_id')) {
+            $query->where('session_id', $request->input('session_id'));
+        }
+
+        if ($request->filled('before_id')) {
+            $query->where('id', '<', (int) $request->input('before_id'));
+        }
+
+        $limit = min((int) $request->input('limit', 10), 50);
+
+        // Fetch latest messages descending, then reverse so oldest of this page comes first
+        $logs = $query->orderByDesc('id')->take($limit + 1)->get();
+        $hasMore = $logs->count() > $limit;
+        $logs = $logs->take($limit)->reverse()->values();
+
+        $messages = $logs->map(fn ($log) => [
+            'id' => (string) $log->id,
+            'role' => $log->role,
+            'content' => $log->message,
+            'actions' => $log->actions ?? [],
+            'audio' => $log->audio_url,
+            'timestamp' => $log->created_at->format('d M, h:i A'),
+        ]);
+
+        return response()->json([
+            'messages' => $messages,
+            'has_more' => $hasMore,
+            'oldest_id' => $logs->first()?->id,
+            'total_count' => AiChatLog::where('api_key', $matchedKey?->key ?? 'web_admin')->count(),
+        ]);
+    }
+
+    /**
+     * Clear Chat History for store / session
+     */
+    public function clearHistory(Request $request): JsonResponse
+    {
+        $bearerToken = $request->bearerToken();
+        $apiKeyParam = $request->input('api_key', $bearerToken);
+
+        if (empty($apiKeyParam) && ! auth()->check()) {
+            return response()->json(['error' => 'Unauthorized'], 401);
+        }
+
+        $query = AiChatLog::query();
+        if (! empty($apiKeyParam)) {
+            $query->where('api_key', $apiKeyParam);
+        } else {
+            $query->where('api_key', 'web_admin');
+        }
+
+        if ($request->filled('session_id')) {
+            $query->where('session_id', $request->input('session_id'));
+        }
+
+        $query->delete();
+
+        return response()->json(['success' => true, 'message' => 'Chat history cleared.']);
     }
 
     /**
