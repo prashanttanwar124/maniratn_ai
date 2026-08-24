@@ -195,6 +195,27 @@ class GeminiAiService
                             'required' => ['weight'],
                         ],
                     ],
+                    [
+                        'name' => 'check_stock',
+                        'description' => 'Search and check available unsold jewellery inventory/stock in showroom database by name, category, metal, or barcode.',
+                        'parameters' => [
+                            'type' => 'OBJECT',
+                            'properties' => [
+                                'query' => [
+                                    'type' => 'STRING',
+                                    'description' => 'Ornament name, category, or barcode to search (e.g. Ring, Chain, MN-G-1024)',
+                                ],
+                                'category' => [
+                                    'type' => 'STRING',
+                                    'description' => 'Category filter (e.g. Ring, Chain, Bangle, Necklace, Silver Payal)',
+                                ],
+                                'metal' => [
+                                    'type' => 'STRING',
+                                    'description' => 'Metal filter: GOLD or SILVER',
+                                ],
+                            ],
+                        ],
+                    ],
                 ],
             ],
         ];
@@ -232,7 +253,7 @@ class GeminiAiService
                 'reply' => $greetings[$cleanMsg],
                 'actions' => [],
                 'audio' => $audioUri,
-                'cached' => true,
+                'cached' => false,
             ];
         }
 
@@ -250,19 +271,27 @@ class GeminiAiService
             'parts' => [['text' => $userMessage]],
         ];
 
-        $systemInstruction = "You are 'Karat AI', an intelligent voice and tool copilot for Maniratn Jewellers & KaratSetu ERP.
-        You assist store owners, managers, and staff with daily jewellery retail operations.
+        $systemInstruction = "You are 'Karat AI', an intelligent voice and operations copilot for Maniratn Jewellers & KaratSetu ERP.
+        You assist store owners, managers, and staff with daily jewellery retail operations based strictly on the ERP database state.
         You understand Hindi, English, and Hinglish naturally.
 
-        CRITICAL RULES:
-        - Keep replies EXTREMELY SHORT, direct, and to-the-point (Maximum 1 short sentence).
-        - DO NOT add filler words, greetings, or long explanations.
-        - If user asks for rates: Answer directly with the price. Example: '22K Gold ₹6,830, Silver ₹88.50 per gram.'
-        - If user adds a product: Confirm in one direct sentence. Example: 'Done. 12g 22K Ring add ho gayi, Barcode MN-G-4770.'
-        - If user asks for vault balance: 'Cash ₹4,85,200, Gold 1.42 kg safe me hai.'
-        - If user asks for estimate: 'Total estimate ₹1,12,476 hai.'
-        - If user asks to create a bill or invoice (e.g. 'bill banao', 'invoice bana do', 'Rahul Sharma ko 15g 22k chain ka bill bana do'): Always execute the create_bill tool. Reply format: 'Done. Bill generate ho gaya hai.'
-        - Always execute the appropriate tool function (get_daily_rates, update_daily_rates, add_product, get_vault_balance, calculate_estimate, create_bill).";
+        CRITICAL OPERATIONAL RULES:
+        1. PROACTIVE QUESTIONING & CLARIFICATIONS:
+           - If required data is missing, ALWAYS PROACTIVELY ASK the user before proceeding:
+             * If user asks for estimate or bill without weight: Ask 'Item ka weight (grams me) kitna hai?'
+             * If today's live rate is needed but not set in DB: Ask 'Aaj ka 24K gold aur silver rate kya hai? Kripya batayein taaki main update karke calculation karoon.'
+             * If user provides new rates (e.g. '7450 gold 89 silver'): Call update_daily_rates immediately, update DB, and confirm.
+        2. SHORT & NATURAL 1-SENTENCE REPLIES:
+           - Keep replies EXTREMELY SHORT, direct, and to-the-point (Maximum 1 short sentence).
+           - Rates: 'Aaj ka 24K Gold ₹7,450, 22K ₹6,824, Silver ₹89.00 per gram hai.'
+           - Rate Update: 'Done. Aaj ka 24K rate ₹7,450 aur Silver ₹89 update ho gaya.'
+           - Product Add: 'Done. {weight}g {purity} {name} stock me add ho gayi, Barcode {barcode}.'
+           - Vault: 'Vault me Cash {cash}, Gold {gold}, aur Silver {silver} safe me hai.'
+           - Estimate: 'Total estimate quotation {total} banega (12% making aur 3% GST ke sath).'
+           - Bill: 'Done! Customer {customer} ke liye Bill #{invoice_no} generate ho gaya hai.'
+           - Stock: 'Showroom me {count} items available hain, total weight {weight}g.'
+           - Always call the corresponding tool: get_daily_rates, update_daily_rates, add_product, get_vault_balance, calculate_estimate, create_bill, check_stock.
+           - Default making charge calculation is 12% on metal value and GST is 3% on subtotal.";
 
         $payload = [
             'contents' => $contents,
@@ -555,6 +584,12 @@ class GeminiAiService
                     'customer' => $args['customer_name'] ?? 'Walk-in Customer',
                     'weight' => floatval($args['weight'] ?? 0),
                     'item' => $args['item_name'] ?? 'Jewellery Item',
+                ];
+
+            case 'check_stock':
+                return [
+                    'status' => 'FORWARD_TO_ERP',
+                    'query' => $args['query'] ?? 'Jewellery',
                 ];
 
             default:
