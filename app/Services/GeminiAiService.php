@@ -183,6 +183,10 @@ class GeminiAiService
                                     'type' => 'NUMBER',
                                     'description' => 'Making charges in INR per gram (optional, only if user explicitly asks for per gram)',
                                 ],
+                                'barcode' => [
+                                    'type' => 'STRING',
+                                    'description' => 'Stock product barcode (e.g. MN-G-4770, MN-S-1024). When barcode is given, item details, weight, and purity are fetched automatically from inventory database!',
+                                ],
                                 'payment_mode' => [
                                     'type' => 'STRING',
                                     'description' => 'Payment mode: CASH, UPI, BANK_TRANSFER, CARD, or UNPAID (default CASH)',
@@ -192,7 +196,7 @@ class GeminiAiService
                                     'description' => 'Discount in INR (optional)',
                                 ],
                             ],
-                            'required' => ['weight'],
+                            'required' => [],
                         ],
                     ],
                     [
@@ -281,6 +285,7 @@ class GeminiAiService
              * If user asks for estimate or bill without weight: Ask 'Item ka weight (grams me) kitna hai?'
              * If today's live rate is needed but not set in DB: Ask 'Aaj ka 24K gold aur silver rate kya hai? Kripya batayein taaki main update karke calculation karoon.'
              * If user provides new rates (e.g. '7450 gold 89 silver'): Call update_daily_rates immediately, update DB, and confirm.
+             * If user scans or gives a barcode (e.g. 'Barcode MN-G-4770 ka bill banao' or 'Scan MN-G-1002 customer Ramesh'): Call create_bill with barcode parameter.
         2. SHORT & NATURAL 1-SENTENCE REPLIES:
            - Keep replies EXTREMELY SHORT, direct, and to-the-point (Maximum 1 short sentence).
            - Rates: 'Aaj ka 24K Gold ₹7,450, 22K ₹6,824, Silver ₹89.00 per gram hai.'
