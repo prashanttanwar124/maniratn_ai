@@ -256,10 +256,6 @@ class AiAssistantController extends Controller
             $query->where('api_key', 'web_admin');
         }
 
-        if ($request->filled('session_id')) {
-            $query->where('session_id', $request->input('session_id'));
-        }
-
         if ($request->filled('before_id')) {
             $query->where('id', '<', (int) $request->input('before_id'));
         }
