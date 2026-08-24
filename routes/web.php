@@ -28,6 +28,15 @@ Route::middleware('auth')->group(function () {
     Route::put('/users/{user}', [\App\Http\Controllers\UserManagementController::class, 'update'])->name('users.update');
     Route::delete('/users/{user}', [\App\Http\Controllers\UserManagementController::class, 'destroy'])->name('users.destroy');
 
+    // Roles & Permissions Management
+    Route::post('/roles', [\App\Http\Controllers\UserManagementController::class, 'storeRole'])->name('roles.store');
+    Route::put('/roles/{role}', [\App\Http\Controllers\UserManagementController::class, 'updateRole'])->name('roles.update');
+    Route::delete('/roles/{role}', [\App\Http\Controllers\UserManagementController::class, 'destroyRole'])->name('roles.destroy');
+
+    Route::post('/permissions', [\App\Http\Controllers\UserManagementController::class, 'storePermission'])->name('permissions.store');
+    Route::put('/permissions/{permission}', [\App\Http\Controllers\UserManagementController::class, 'updatePermission'])->name('permissions.update');
+    Route::delete('/permissions/{permission}', [\App\Http\Controllers\UserManagementController::class, 'destroyPermission'])->name('permissions.destroy');
+
     // Profile & Password Security
     Route::get('/profile', [\App\Http\Controllers\ProfileController::class, 'edit'])->name('profile.edit');
     Route::put('/profile', [\App\Http\Controllers\ProfileController::class, 'updateProfile'])->name('profile.update');

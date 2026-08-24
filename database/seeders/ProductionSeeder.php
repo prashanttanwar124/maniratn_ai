@@ -14,18 +14,30 @@ class ProductionSeeder extends Seeder
      */
     public function run(): void
     {
-        // 0. Seed Spatie Roles & Permissions
-        $roles = [
-            'Super Admin',
-            'AI Operator',
-            'Viewer',
+        // 0. Seed Spatie Permissions & Roles
+        $permissions = [
+            'manage_api_keys',
+            'view_api_keys',
+            'access_ai_playground',
+            'manage_users',
+            'manage_roles',
+            'access_profile',
         ];
 
-        foreach ($roles as $roleName) {
-            \Spatie\Permission\Models\Role::firstOrCreate(['name' => $roleName, 'guard_name' => 'web']);
+        foreach ($permissions as $perm) {
+            \Spatie\Permission\Models\Permission::firstOrCreate(['name' => $perm, 'guard_name' => 'web']);
         }
 
-        $this->command->info("✓ Roles Seeded: " . implode(', ', $roles));
+        $superAdminRole = \Spatie\Permission\Models\Role::firstOrCreate(['name' => 'Super Admin', 'guard_name' => 'web']);
+        $superAdminRole->syncPermissions($permissions);
+
+        $operatorRole = \Spatie\Permission\Models\Role::firstOrCreate(['name' => 'AI Operator', 'guard_name' => 'web']);
+        $operatorRole->syncPermissions(['view_api_keys', 'access_ai_playground', 'access_profile']);
+
+        $viewerRole = \Spatie\Permission\Models\Role::firstOrCreate(['name' => 'Viewer', 'guard_name' => 'web']);
+        $viewerRole->syncPermissions(['access_ai_playground', 'access_profile']);
+
+        $this->command->info("✓ Roles & Permissions Seeded successfully.");
 
         // 1. Create / Update Master Admin User
         $adminEmail = env('ADMIN_DEFAULT_EMAIL', 'admin@maniratn.ai');
