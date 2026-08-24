@@ -149,11 +149,11 @@ class GeminiAiService
                             'properties' => [
                                 'customer_name' => [
                                     'type' => 'STRING',
-                                    'description' => 'Customer full name (e.g. Rahul Sharma, Amit Verma, Pooja)',
+                                    'description' => 'Customer full name (do NOT invent dummy names; leave empty or "Walk-in Customer" if not provided)',
                                 ],
                                 'customer_phone' => [
                                     'type' => 'STRING',
-                                    'description' => 'Customer mobile phone number (optional, e.g. 9876543210)',
+                                    'description' => 'Customer 10-digit mobile number (do NOT invent dummy numbers; leave empty if not provided)',
                                 ],
                                 'item_name' => [
                                     'type' => 'STRING',
@@ -189,7 +189,7 @@ class GeminiAiService
                                 ],
                                 'barcode' => [
                                     'type' => 'STRING',
-                                    'description' => 'Stock product barcode (e.g. MN-G-4770, MN-S-1024). When barcode is given, item details, weight, and purity are fetched automatically from inventory database!',
+                                    'description' => 'Stock product barcode ONLY if explicitly mentioned by user (e.g. G00019). Do NOT invent a barcode for fresh custom items.',
                                 ],
                                 'payment_mode' => [
                                     'type' => 'STRING',
@@ -204,7 +204,6 @@ class GeminiAiService
                                     'description' => 'Discount in INR (optional)',
                                 ],
                             ],
-                            'required' => ['customer_name'],
                         ],
                     ],
                     [
@@ -321,16 +320,20 @@ class GeminiAiService
         When a user wants to generate a bill (e.g. 'Barcode G00019 ka bill bana do' or '15g chain ka bill banao' or 'bill banana hai'):
         Do NOT create the bill right away if essential fields are missing. Interactively ask the user step-by-step:
         1. Customer Details:
+           - NEVER invent or hallucinate fake names (like 'Rahul Sharma', 'Amit') or fake numbers (like '9876543210').
            - If customer name or mobile number is not provided, ask:
-             'Customer ka naam aur mobile number kya hai? (Ya agar walk-in hai toh batayein).'
+             'Customer ka naam aur mobile number kya hai? (Ya agar Walk-in customer hai toh batayein).'
+           - If user says 'Walk-in', 'bina naam ke', or 'walkin', set customer_name = 'Walk-in Customer' and customer_phone = ''.
         2. Item / Barcode & Weight:
            - If neither barcode nor item name/weight is provided, ask:
              'Kaunsa item ya barcode hai aur kitna weight hai?'
+           - If user provides a barcode (e.g. 'G00019'), pass 'barcode'.
+           - If user is billing a new custom item (e.g. '15g 22k gold chain'), do NOT invent or pass a barcode!
         3. Making Charges & Payment Mode:
            - If user provides customer and item details, execute `create_bill` with making charges (Percentage %, Per gram ₹/g, or Flat ₹) and payment method (Cash, UPI, Bank, Card, or Unpaid).
-        4. Once all details are collected across turns, call `create_bill` with:
+        4. Once details are collected, call `create_bill` with:
            - customer_name, customer_phone
-           - barcode OR (item_name, weight, metal, purity)
+           - barcode (ONLY if specified) OR (item_name, weight, metal, purity)
            - rate_per_gm (if custom)
            - making_percent OR making_charge_per_gram OR making_charge_flat
            - discount_amount
