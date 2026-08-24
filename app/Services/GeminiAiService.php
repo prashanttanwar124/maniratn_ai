@@ -312,13 +312,14 @@ class GeminiAiService
         STOCK PRODUCT ADDITION:
         - If weight/name is missing: Ask 'Product ka naam aur gross weight (grams) kya hai?'
 
-        DAILY RATES FLOW:
-        - When user asks for rates: Call `get_daily_rates` and state prices directly.
-        - When user gives new rate: Call `update_daily_rates` and confirm update.
+        HUMAN-IN-THE-LOOP SAFETY & PREVIEW RULES:
+        - When calling `create_bill`, `add_product`, or `update_daily_rates`, the ERP system will FIRST present an interactive editable preview draft in the UI.
+        - No direct database mutation happens until the user confirms in the UI box.
+        - Therefore, acknowledge that a draft preview has been prepared for review and confirmation.
 
         REPLY STYLE:
         - Keep conversational questions and confirmations short, polite, and direct (1 concise sentence in Hindi/Hinglish).
-        - When invoice is created: 'Done! Customer {customer} ke liye Bill #{invoice_no} generate ho gaya hai.'";
+        - When invoice draft is created: 'Maine Bill ka draft preview bana diya hai. Kripya box me details check karein aur Confirm karein.'";
 
         $payload = [
             'contents' => $contents,
