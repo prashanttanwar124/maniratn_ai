@@ -129,21 +129,32 @@ onUnmounted(() => {
                     </div>
 
                     <div class="py-1">
+                        <Link
+                            href="/profile"
+                            class="flex items-center gap-2.5 px-3.5 py-2 text-xs text-surface-700 hover:bg-surface-50 mx-1"
+                            @click="isUserMenuOpen = false"
+                        >
+                            <i class="pi pi-shield text-xs text-[#c08f34]"></i>
+                            <span>My Profile & Password</span>
+                        </Link>
+                        <Link
+                            href="/users"
+                            class="flex items-center gap-2.5 px-3.5 py-2 text-xs text-surface-700 hover:bg-surface-50 mx-1"
+                            @click="isUserMenuOpen = false"
+                        >
+                            <i class="pi pi-users text-xs text-[#c08f34]"></i>
+                            <span>User & Role Access</span>
+                        </Link>
+                    </div>
+
+                    <div class="py-1">
                         <a
                             href="http://127.0.0.1:8000"
                             target="_blank"
                             class="flex items-center gap-2.5 px-3.5 py-2 text-xs text-surface-700 hover:bg-surface-50 mx-1"
                         >
                             <i class="pi pi-box text-xs text-[#c08f34]"></i>
-                            <span>Jewellery Showroom</span>
-                        </a>
-                        <a
-                            href="http://127.0.0.1:8000/settings/business-profile"
-                            target="_blank"
-                            class="flex items-center gap-2.5 px-3.5 py-2 text-xs text-surface-700 hover:bg-surface-50 mx-1"
-                        >
-                            <i class="pi pi-cog text-xs text-[#c08f34]"></i>
-                            <span>ERP AI Settings</span>
+                            <span>Jewellery Showroom ERP</span>
                         </a>
                     </div>
 

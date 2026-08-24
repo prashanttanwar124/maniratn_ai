@@ -10,6 +10,13 @@ const model = ref([
         ],
     },
     {
+        label: 'Administration & Security',
+        items: [
+            { label: 'User & Role Access', icon: 'pi pi-fw pi-users', to: '/users' },
+            { label: 'My Profile & Password', icon: 'pi pi-fw pi-shield', to: '/profile' },
+        ],
+    },
+    {
         label: 'Connected Showroom Portals',
         items: [
             { label: 'Open Jewellery ERP', icon: 'pi pi-fw pi-external-link', url: 'http://127.0.0.1:8000', target: '_blank' },

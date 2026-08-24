@@ -10,7 +10,7 @@ Route::middleware('guest')->group(function () {
     Route::post('/login', [AuthController::class, 'login'])->name('login.submit');
 });
 
-// Authenticated Master Admin Protected Routes
+// Authenticated Protected Routes
 Route::middleware('auth')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
@@ -21,6 +21,17 @@ Route::middleware('auth')->group(function () {
     Route::post('/api/keys', [AiAssistantController::class, 'storeKey'])->name('keys.store');
     Route::post('/api/keys/{id}/toggle', [AiAssistantController::class, 'toggleKey'])->name('keys.toggle');
     Route::delete('/api/keys/{id}', [AiAssistantController::class, 'deleteKey'])->name('keys.destroy');
+
+    // User & Access Control Management
+    Route::get('/users', [\App\Http\Controllers\UserManagementController::class, 'index'])->name('users.index');
+    Route::post('/users', [\App\Http\Controllers\UserManagementController::class, 'store'])->name('users.store');
+    Route::put('/users/{user}', [\App\Http\Controllers\UserManagementController::class, 'update'])->name('users.update');
+    Route::delete('/users/{user}', [\App\Http\Controllers\UserManagementController::class, 'destroy'])->name('users.destroy');
+
+    // Profile & Password Security
+    Route::get('/profile', [\App\Http\Controllers\ProfileController::class, 'edit'])->name('profile.edit');
+    Route::put('/profile', [\App\Http\Controllers\ProfileController::class, 'updateProfile'])->name('profile.update');
+    Route::put('/profile/password', [\App\Http\Controllers\ProfileController::class, 'updatePassword'])->name('profile.password');
 });
 
 // Public Voice & Tool Calling Endpoints (Secured via Bearer Secret Token in Controller)

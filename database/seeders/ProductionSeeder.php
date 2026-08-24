@@ -14,6 +14,19 @@ class ProductionSeeder extends Seeder
      */
     public function run(): void
     {
+        // 0. Seed Spatie Roles & Permissions
+        $roles = [
+            'Super Admin',
+            'AI Operator',
+            'Viewer',
+        ];
+
+        foreach ($roles as $roleName) {
+            \Spatie\Permission\Models\Role::firstOrCreate(['name' => $roleName, 'guard_name' => 'web']);
+        }
+
+        $this->command->info("✓ Roles Seeded: " . implode(', ', $roles));
+
         // 1. Create / Update Master Admin User
         $adminEmail = env('ADMIN_DEFAULT_EMAIL', 'admin@maniratn.ai');
         $adminPassword = env('ADMIN_DEFAULT_PASSWORD', 'admin123');
@@ -27,7 +40,11 @@ class ProductionSeeder extends Seeder
             ]
         );
 
-        $this->command->info("✓ Master Admin Seeded: {$admin->email}");
+        if (! $admin->hasRole('Super Admin')) {
+            $admin->assignRole('Super Admin');
+        }
+
+        $this->command->info("✓ Master Admin Seeded with Super Admin Role: {$admin->email}");
 
         // 2. Seed Default Live Production Showroom Key
         $mainStoreKey = env('INITIAL_STORE_KEY', 'mn_live_d8f4e2a1c90b6732e45a89f0');
