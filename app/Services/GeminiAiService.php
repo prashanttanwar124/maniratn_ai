@@ -141,6 +141,60 @@ class GeminiAiService
                             'required' => ['weight'],
                         ],
                     ],
+                    [
+                        'name' => 'create_bill',
+                        'description' => 'Create and generate a customer sale invoice/bill for jewellery items (gold, silver, or custom ornament) in the ERP with automatic GST, customer creation/lookup, payment method, and direct invoice view link.',
+                        'parameters' => [
+                            'type' => 'OBJECT',
+                            'properties' => [
+                                'customer_name' => [
+                                    'type' => 'STRING',
+                                    'description' => 'Customer full name (e.g. Rahul Sharma, Amit Verma, Pooja)',
+                                ],
+                                'customer_phone' => [
+                                    'type' => 'STRING',
+                                    'description' => 'Customer mobile phone number (optional, e.g. 9876543210)',
+                                ],
+                                'item_name' => [
+                                    'type' => 'STRING',
+                                    'description' => 'Jewellery item description (e.g. 22K Gold Chain, 18K Diamond Ring, Silver Payal)',
+                                ],
+                                'weight' => [
+                                    'type' => 'NUMBER',
+                                    'description' => 'Net weight in grams (e.g. 14.5, 10.2)',
+                                ],
+                                'metal' => [
+                                    'type' => 'STRING',
+                                    'description' => 'Metal type: GOLD or SILVER (default GOLD)',
+                                ],
+                                'purity' => [
+                                    'type' => 'STRING',
+                                    'description' => 'Purity (e.g. 22K, 18K, 24K, 92.5, 750, 916)',
+                                ],
+                                'rate_per_gm' => [
+                                    'type' => 'NUMBER',
+                                    'description' => 'Gold/Silver rate per gram in INR (optional, defaults to today\'s live rate in DB)',
+                                ],
+                                'making_charge_per_gram' => [
+                                    'type' => 'NUMBER',
+                                    'description' => 'Making charges in INR per gram (e.g. 450)',
+                                ],
+                                'making_percent' => [
+                                    'type' => 'NUMBER',
+                                    'description' => 'Making charges percentage (e.g. 10 for 10%)',
+                                ],
+                                'payment_mode' => [
+                                    'type' => 'STRING',
+                                    'description' => 'Payment mode: CASH, UPI, BANK_TRANSFER, CARD, or UNPAID (default CASH)',
+                                ],
+                                'discount_amount' => [
+                                    'type' => 'NUMBER',
+                                    'description' => 'Discount in INR (optional)',
+                                ],
+                            ],
+                            'required' => ['weight'],
+                        ],
+                    ],
                 ],
             ],
         ];
@@ -207,7 +261,8 @@ class GeminiAiService
         - If user adds a product: Confirm in one direct sentence. Example: 'Done. 12g 22K Ring add ho gayi, Barcode MN-G-4770.'
         - If user asks for vault balance: 'Cash ₹4,85,200, Gold 1.42 kg safe me hai.'
         - If user asks for estimate: 'Total estimate ₹1,12,476 hai.'
-        - Always execute the appropriate tool function (get_daily_rates, update_daily_rates, add_product, get_vault_balance, calculate_estimate).";
+        - If user asks to create a bill or invoice (e.g. 'bill banao', 'invoice bana do', 'Rahul Sharma ko 15g 22k chain ka bill bana do'): Always execute the create_bill tool. Reply format: 'Done. Bill generate ho gaya hai.'
+        - Always execute the appropriate tool function (get_daily_rates, update_daily_rates, add_product, get_vault_balance, calculate_estimate, create_bill).";
 
         $payload = [
             'contents' => $contents,
@@ -481,6 +536,15 @@ class GeminiAiService
                     'subtotal' => '₹' . number_format($subtotal, 2),
                     'gst_3_percent' => '₹' . number_format($gst, 2),
                     'total_estimate' => '₹' . number_format($grandTotal, 2),
+                ];
+
+            case 'create_bill':
+            case 'create_invoice':
+                return [
+                    'status' => 'FORWARD_TO_ERP',
+                    'customer' => $args['customer_name'] ?? 'Walk-in Customer',
+                    'weight' => floatval($args['weight'] ?? 0),
+                    'item' => $args['item_name'] ?? 'Jewellery Item',
                 ];
 
             default:
