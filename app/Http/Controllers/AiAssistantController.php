@@ -208,7 +208,8 @@ class AiAssistantController extends Controller
             ],
         ]);
 
-        $result = $this->geminiService->chat($userMessage, $history, $voice, $includeAudio);
+        $erpContext = $request->input('erp_context', []);
+        $result = $this->geminiService->chat($userMessage, $history, $voice, $includeAudio, $erpContext);
 
         $replyMessage = ! empty($result['reply'])
             ? $result['reply']

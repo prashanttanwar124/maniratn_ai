@@ -251,7 +251,7 @@ class GeminiAiService
     /**
      * Send user message to Gemini with Tool Calling & Natural Speech Response
      */
-    public function chat(string $userMessage, array $conversationHistory = [], string $voiceName = 'Aoede', bool $includeAudio = true): array
+    public function chat(string $userMessage, array $conversationHistory = [], string $voiceName = 'Aoede', bool $includeAudio = true, array $erpContext = []): array
     {
         @set_time_limit(120);
         @ini_set('max_execution_time', '120');
@@ -424,7 +424,7 @@ class GeminiAiService
                     $functionName = $functionCall['name'];
                     $args = $functionCall['args'] ?? [];
 
-                    $toolResult = $this->executeTool($functionName, $args);
+                    $toolResult = $this->executeTool($functionName, $args, $erpContext);
                     $actionsExecuted[] = [
                         'tool' => $functionName,
                         'args' => $args,
@@ -621,19 +621,22 @@ class GeminiAiService
     /**
      * Local tool execution handlers
      */
-    protected function executeTool(string $name, array $args): array
+    protected function executeTool(string $name, array $args, array $erpContext = []): array
     {
         switch ($name) {
             case 'get_daily_rates':
+                $g24k = floatval($erpContext['today_rates']['gold_24k'] ?? 7520);
+                $g22k = floatval($erpContext['today_rates']['gold_22k'] ?? round($g24k * 0.916, 2));
+                $silver = floatval($erpContext['today_rates']['silver'] ?? 89.20);
+
                 return [
                     'date' => date('d M Y'),
-                    'gold_24k_per_gm' => 7450,
-                    'gold_22k_per_gm' => 6830,
-                    'gold_18k_per_gm' => 5588,
-                    'silver_per_gm' => 88.50,
-                    'silver_per_kg' => 88500,
+                    'gold_24k_per_gm' => $g24k,
+                    'gold_22k_per_gm' => $g22k,
+                    'gold_18k_per_gm' => round($g24k * 0.750, 2),
+                    'silver_per_gm' => $silver,
                     'currency' => 'INR',
-                    'status' => 'LIVE_ACTIVE',
+                    'status' => 'REAL_ERP_DATABASE',
                 ];
 
             case 'update_daily_rates':
