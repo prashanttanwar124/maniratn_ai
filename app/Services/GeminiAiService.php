@@ -413,6 +413,10 @@ class GeminiAiService
                         $finalText = "Vault me Cash " . ($toolResult['cash_in_hand'] ?? '') . ", Gold " . ($toolResult['gold_in_vault'] ?? '') . ", aur Silver " . ($toolResult['silver_in_vault'] ?? '') . " safe me hai.";
                     } elseif ($functionName === 'calculate_estimate') {
                         $finalText = "Total estimate quotation " . ($toolResult['total_estimate'] ?? '') . " banega.";
+                    } elseif ($functionName === 'create_bill' || $functionName === 'create_invoice') {
+                        $finalText = "Maine Bill ka draft preview prepare kar diya hai. Kripya details check karein aur Confirm karein.";
+                    } elseif ($functionName === 'check_stock') {
+                        $finalText = "Showroom stock inventory me total items check kar liye hain.";
                     }
                 } elseif (isset($part['text'])) {
                     $finalText .= $part['text'];
@@ -420,6 +424,9 @@ class GeminiAiService
             }
 
             $finalText = trim($finalText);
+            if (empty($finalText) && ! empty($actionsExecuted)) {
+                $finalText = "Maine aapke nirdesh ke anusar details process kar di hain.";
+            }
 
             // Generate or Retrieve Cached High-Fidelity Studio Voice
             $audioDataUri = null;
@@ -492,8 +499,8 @@ class GeminiAiService
             ];
 
             try {
-                $response = Http::timeout(20)
-                    ->connectTimeout(8)
+                $response = Http::timeout(6)
+                    ->connectTimeout(3)
                     ->withHeaders(['Content-Type' => 'application/json'])
                     ->post($url, $payload);
 
