@@ -406,9 +406,9 @@ class GeminiAiService
                     if ($functionName === 'get_daily_rates') {
                         $finalText = "24K Gold ₹" . number_format($toolResult['gold_24k_per_gm'] ?? 7450) . ", 22K ₹" . number_format($toolResult['gold_22k_per_gm'] ?? 6830) . ", Silver ₹" . number_format($toolResult['silver_per_gm'] ?? 88.50, 2) . " per gram hai.";
                     } elseif ($functionName === 'update_daily_rates') {
-                        $finalText = "Done. Aaj ka 24K rate ₹" . number_format($toolResult['gold_24k_sell'] ?? 7450) . " aur Silver ₹" . number_format($toolResult['silver_sell'] ?? 88.50, 2) . " update ho gaya.";
+                        $finalText = "Maine live rates update ka draft preview prepare kar diya hai. Kripya rates check karke Confirm karein.";
                     } elseif ($functionName === 'add_product') {
-                        $finalText = "Done. " . ($toolResult['weight'] ?? '') . " " . ($toolResult['purity'] ?? '') . " " . ($toolResult['name'] ?? '') . " add ho gayi, Barcode " . ($toolResult['barcode'] ?? '') . ".";
+                        $finalText = "Maine naye ornament ka draft preview prepare kar diya hai. Kripya details check karke Confirm karein.";
                     } elseif ($functionName === 'get_vault_balance') {
                         $finalText = "Vault me Cash " . ($toolResult['cash_in_hand'] ?? '') . ", Gold " . ($toolResult['gold_in_vault'] ?? '') . ", aur Silver " . ($toolResult['silver_in_vault'] ?? '') . " safe me hai.";
                     } elseif ($functionName === 'calculate_estimate') {
@@ -566,11 +566,13 @@ class GeminiAiService
 
             case 'update_daily_rates':
                 return [
-                    'success' => true,
+                    'found' => true,
+                    'is_preview' => true,
+                    'action_type' => 'UPDATE_DAILY_RATES',
                     'date' => date('Y-m-d'),
                     'gold_24k_sell' => floatval($args['gold_24k_sell'] ?? 7450),
                     'silver_sell' => floatval($args['silver_sell'] ?? 88.50),
-                    'status' => 'UPDATED',
+                    'status' => 'CONFIRMATION_REQUIRED',
                 ];
 
             case 'add_product':
@@ -581,20 +583,17 @@ class GeminiAiService
                 $category = $args['category'] ?? 'General';
                 $makingCharge = floatval($args['making_charge_per_gram'] ?? 450);
 
-                $barcode = 'MN-' . strtoupper(substr($metal, 0, 1)) . '-' . rand(1000, 9999);
-
                 return [
-                    'success' => true,
-                    'product_id' => rand(500, 999),
-                    'barcode' => $barcode,
+                    'found' => true,
+                    'is_preview' => true,
+                    'action_type' => 'ADD_PRODUCT',
                     'name' => $name,
                     'metal' => $metal,
                     'purity' => $purity,
-                    'weight' => $weight . ' g',
+                    'weight' => $weight,
                     'category' => $category,
-                    'making_charge_per_gm' => '₹' . $makingCharge,
-                    'status' => 'IN_STOCK',
-                    'message' => "Product '{$name}' ({$weight}g {$purity}) successfully added with barcode {$barcode}.",
+                    'making_charge_per_gm' => $makingCharge,
+                    'status' => 'CONFIRMATION_REQUIRED',
                 ];
 
             case 'get_vault_balance':

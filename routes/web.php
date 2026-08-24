@@ -49,6 +49,7 @@ Route::post('/api/ai/chat', [AiAssistantController::class, 'chat'])->name('api.a
 Route::get('/ai/history', [AiAssistantController::class, 'getHistory'])->name('ai.history');
 Route::get('/api/ai/history', [AiAssistantController::class, 'getHistory'])->name('api.ai.history');
 Route::delete('/api/ai/history', [AiAssistantController::class, 'clearHistory'])->name('api.ai.history.clear');
+Route::post('/api/ai/history/update-action', [AiAssistantController::class, 'updateAction'])->name('api.ai.history.update-action');
 Route::post('/api/ai/tts', [AiAssistantController::class, 'tts'])->name('api.ai.tts');
 
 

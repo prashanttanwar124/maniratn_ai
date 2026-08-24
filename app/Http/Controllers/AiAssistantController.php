@@ -317,6 +317,31 @@ class AiAssistantController extends Controller
     }
 
     /**
+     * Update an action in chat log (e.g. When confirmed or discarded by user)
+     */
+    public function updateAction(Request $request): JsonResponse
+    {
+        $logId = $request->input('message_id');
+        $actions = $request->input('actions');
+        $reply = $request->input('reply');
+
+        if ($logId) {
+            $log = AiChatLog::find($logId);
+            if ($log) {
+                if ($actions !== null) {
+                    $log->actions = $actions;
+                }
+                if ($reply !== null) {
+                    $log->message = $reply;
+                }
+                $log->save();
+            }
+        }
+
+        return response()->json(['success' => true]);
+    }
+
+    /**
      * Synthesize Google Gemini Studio HD Voice on demand
      */
     public function tts(Request $request): JsonResponse
