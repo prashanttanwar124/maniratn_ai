@@ -1,0 +1,97 @@
+@use 'mixins' as *;
+
+.layout-topbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 997;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    height: 4rem;
+    padding: 0 1.5rem;
+    background: #ffffff;
+    border-bottom: 1px solid var(--surface-200);
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.02);
+    transition: left var(--layout-section-transition-duration);
+
+    .layout-topbar-start {
+        display: flex;
+        align-items: center;
+        gap: 0.85rem;
+        min-width: 0;
+        flex: 0 0 auto;
+    }
+
+    .layout-topbar-action {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 2.25rem;
+        height: 2.25rem;
+        border-radius: 0;
+        color: var(--surface-600);
+        background: transparent;
+        border: 1px solid transparent;
+        transition: all 0.15s ease;
+        cursor: pointer;
+
+        &:hover {
+            background-color: var(--surface-100);
+            color: #1c3633;
+        }
+
+        &:focus-visible {
+            @include focused();
+        }
+
+        i {
+            font-size: 1.15rem;
+        }
+    }
+
+    .layout-topbar-brand {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.75rem;
+        min-width: 0;
+        text-decoration: none;
+    }
+
+    .layout-topbar-brand-copy {
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+    }
+
+    .layout-topbar-center {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 1rem;
+        flex: 1 1 auto;
+        padding: 0 1.5rem;
+        min-width: 0;
+    }
+
+    .layout-topbar-actions {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 0.75rem;
+        flex: 0 0 auto;
+        min-width: 0;
+    }
+}
+
+@media (max-width: 991px) {
+    .layout-topbar {
+        padding: 0 1rem;
+        height: 3.75rem;
+
+        .layout-topbar-center {
+            display: none;
+        }
+    }
+}

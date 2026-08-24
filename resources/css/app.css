@@ -1,0 +1,170 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+
+@import 'tailwindcss';
+@plugin 'tailwindcss-primeui';
+
+@theme {
+    --font-sans: 'Poppins', sans-serif;
+    --color-surface-900: #1c3633;
+    --color-surface-950: #142826;
+    --color-surface-800: #234642;
+    --color-surface-700: #345853;
+}
+
+:root {
+    --text-color: #1c3633;
+    --surface-900: #1c3633;
+    --surface-950: #142826;
+    --surface-800: #234642;
+    --surface-700: #345853;
+}
+
+@layer base {
+    *,
+    ::before,
+    ::after {
+        box-sizing: border-box;
+    }
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6,
+    p {
+        margin: 0;
+        padding: 0;
+    }
+    body {
+        font-family: 'Poppins', sans-serif;
+        color: #1c3633;
+        background-color: #fcfbf7;
+        margin: 0;
+        padding: 0;
+    }
+}
+
+/* 👑 KaratSetu Royal Enterprise Sidebar Styling */
+.layout-sidebar {
+    background-color: #ffffff !important;
+    border-right: 1px solid #e5e7eb !important;
+    padding: 1.25rem 0.75rem !important;
+}
+
+.layout-menu {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.layout-root-menuitem {
+    margin-bottom: 1.25rem;
+}
+
+.layout-menuitem-root-text {
+    font-size: 10px !important;
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.14em !important;
+    color: #9b6f1e !important;
+    padding: 0.5rem 0.75rem !important;
+    margin-bottom: 0.25rem !important;
+}
+
+.layout-menu ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.layout-menu li a {
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.75rem !important;
+    padding: 0.65rem 0.85rem !important;
+    font-size: 12.5px !important;
+    font-weight: 600 !important;
+    color: #1c3633 !important;
+    text-decoration: none !important;
+    transition: all 0.15s ease !important;
+    border-left: 3px solid transparent !important;
+    border-radius: 0 !important;
+    cursor: pointer !important;
+}
+
+.layout-menu li a:hover {
+    background-color: #1c36330c !important;
+    color: #1c3633 !important;
+    border-left-color: #c08f34 !important;
+}
+
+.layout-menu li a.active-route,
+.layout-menu li a.router-link-active {
+    background-color: #1c36330d !important;
+    color: #1c3633 !important;
+    border-left: 3px solid #c08f34 !important;
+    font-weight: 700 !important;
+}
+
+.layout-menu li a.active-route i,
+.layout-menu li a.router-link-active i {
+    color: #c08f34 !important;
+}
+
+.layout-menu li a.active-route span,
+.layout-menu li a.router-link-active span {
+    color: #1c3633 !important;
+}
+
+.layout-menuitem-icon {
+    font-size: 0.95rem !important;
+    color: #c08f34 !important;
+    transition: color 0.15s ease;
+}
+
+/* 💎 PrimeVue Select / Dropdown Royal Customization */
+.p-select {
+    border-radius: 0 !important;
+    border-color: #d1d5db !important;
+    font-size: 12.5px !important;
+    background-color: #ffffff !important;
+    transition: all 0.15s ease !important;
+}
+
+.p-select:hover {
+    border-color: #c08f34 !important;
+}
+
+.p-select:focus,
+.p-select-focus {
+    border-color: #1c3633 !important;
+    box-shadow: 0 0 0 1px #1c3633 !important;
+}
+
+.p-select-overlay {
+    border-radius: 0 !important;
+    border: 1px solid #e5e7eb !important;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1) !important;
+    background-color: #ffffff !important;
+    z-index: 999999 !important;
+}
+
+.p-select-option {
+    border-radius: 0 !important;
+    font-size: 12.5px !important;
+    padding: 0.55rem 0.85rem !important;
+    color: #1c3633 !important;
+}
+
+.p-select-option:hover {
+    background-color: #1c36330c !important;
+    color: #1c3633 !important;
+}
+
+.p-select-option.p-select-option-selected {
+    background-color: #1c3633 !important;
+    color: #ffffff !important;
+    font-weight: 600 !important;
+}
+
+
