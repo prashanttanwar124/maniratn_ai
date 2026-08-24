@@ -685,42 +685,84 @@ class GeminiAiService
                 ];
 
             case 'get_vault_balance':
+                $cash = $erpContext['vault_balance']['cash'] ?? '₹0.00';
+                $gold = $erpContext['vault_balance']['gold'] ?? '0.000 g';
+                $silver = $erpContext['vault_balance']['silver'] ?? '0.000 g';
+
                 return [
-                    'cash_in_hand' => '₹4,85,200',
-                    'gold_in_vault' => '1,420.350 g (Approx 1.42 kg)',
-                    'silver_in_vault' => '12.850 kg',
-                    'last_audit' => 'Today at 10:00 AM',
-                    'status' => 'SECURE_ACTIVE',
+                    'cash_in_hand' => $cash,
+                    'gold_in_vault' => $gold,
+                    'silver_in_vault' => $silver,
+                    'last_audit' => 'Live ERP Database',
+                    'status' => 'REAL_ERP_DATABASE',
                 ];
 
             case 'calculate_estimate':
-                $weight = floatval($args['weight'] ?? 10);
-                $metal = strtoupper($args['metal'] ?? 'GOLD');
-                $purity = $args['purity'] ?? '22K';
+                $matchedProduct = $erpContext['matched_product'] ?? null;
+                $barcodeArg = trim($args['barcode'] ?? '');
 
-                $ratePerGm = ($metal === 'SILVER') ? 88.50 : 6830;
-                $metalValue = $weight * $ratePerGm;
-
-                $makingPercent = isset($args['making_percent']) ? floatval($args['making_percent']) : null;
-                $makingPerGm = isset($args['making_charge_per_gram']) ? floatval($args['making_charge_per_gram']) : null;
-
-                if ($makingPerGm !== null && $makingPerGm > 0) {
-                    $makingTotal = $weight * $makingPerGm;
-                    $makingLabel = "(@ ₹{$makingPerGm}/g)";
+                if ($matchedProduct && (! $barcodeArg || strtoupper($barcodeArg) === strtoupper($matchedProduct['barcode']))) {
+                    $weight = floatval($matchedProduct['weight']);
+                    $metal = strtoupper($matchedProduct['metal'] ?? 'GOLD');
+                    $purity = $matchedProduct['purity'] ?? '916 Hallmark';
+                    $makingCharge = floatval($matchedProduct['making_charge'] ?? 12);
+                    $makingChargeType = $matchedProduct['making_charge_type'] ?? 'percentage';
+                    $itemName = $matchedProduct['name'];
+                    $barcode = $matchedProduct['barcode'];
                 } else {
-                    $makingPercent = ($makingPercent !== null && $makingPercent > 0) ? $makingPercent : 12.0;
-                    $makingTotal = $metalValue * ($makingPercent / 100);
-                    $makingLabel = "({$makingPercent}%)";
+                    $weight = floatval($args['weight'] ?? 10);
+                    $metal = strtoupper($args['metal'] ?? 'GOLD');
+                    $purity = $args['purity'] ?? '916 Hallmark';
+                    $makingCharge = isset($args['making_percent'])
+                        ? floatval($args['making_percent'])
+                        : (isset($args['making_charge_per_gram']) ? floatval($args['making_charge_per_gram']) : 12.0);
+                    $makingChargeType = isset($args['making_charge_per_gram']) ? 'per_gram' : 'percentage';
+                    $itemName = $args['item_name'] ?? 'Jewellery Item';
+                    $barcode = $barcodeArg ?: null;
                 }
 
-                $subtotal = $metalValue + $makingTotal;
-                $gst = $subtotal * 0.03;
-                $grandTotal = $subtotal + $gst;
+                $g24k = floatval($erpContext['today_rates']['gold_24k'] ?? 7520);
+                $silver = floatval($erpContext['today_rates']['silver'] ?? 89.20);
+
+                $purityStr = strtoupper(trim((string) $purity));
+                if (str_contains($purityStr, '24K') || str_contains($purityStr, '999') || str_contains($purityStr, '24')) {
+                    $multiplier = 1.0;
+                    $resolvedPurity = '24K (99.9%)';
+                } elseif (str_contains($purityStr, '18K') || str_contains($purityStr, '750') || str_contains($purityStr, '18')) {
+                    $multiplier = 0.750;
+                    $resolvedPurity = '18K (750 Hallmark)';
+                } elseif (str_contains($purityStr, '14K') || str_contains($purityStr, '585') || str_contains($purityStr, '14')) {
+                    $multiplier = 0.585;
+                    $resolvedPurity = '14K (585 Hallmark)';
+                } else {
+                    $multiplier = 0.916;
+                    $resolvedPurity = '22K (916 Hallmark)';
+                }
+
+                $ratePerGm = ($metal === 'SILVER') ? $silver : round($g24k * $multiplier, 2);
+                $metalValue = round($weight * $ratePerGm, 2);
+
+                if ($makingChargeType === 'flat') {
+                    $makingTotal = round($makingCharge, 2);
+                    $makingLabel = '(₹' . number_format($makingCharge) . ' Flat)';
+                } elseif ($makingChargeType === 'per_gram') {
+                    $makingTotal = round($weight * $makingCharge, 2);
+                    $makingLabel = '(@ ₹' . number_format($makingCharge, 2) . '/g)';
+                } else {
+                    $makingTotal = round($metalValue * ($makingCharge / 100), 2);
+                    $makingLabel = "({$makingCharge}%)";
+                }
+
+                $subtotal = round($metalValue + $makingTotal, 2);
+                $gst = round($subtotal * 0.03, 2);
+                $grandTotal = round($subtotal + $gst, 2);
 
                 return [
+                    'barcode' => $barcode,
+                    'item_name' => $itemName,
                     'weight' => $weight . ' g',
                     'metal' => $metal,
-                    'purity' => $purity,
+                    'purity' => $resolvedPurity,
                     'rate_per_gm' => '₹' . number_format($ratePerGm, 2),
                     'metal_value' => '₹' . number_format($metalValue, 2),
                     'making_charges' => '₹' . number_format($makingTotal, 2) . " {$makingLabel}",
