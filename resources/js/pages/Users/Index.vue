@@ -3,6 +3,7 @@ import AppLayout from '@/layout/AppLayout.vue';
 import { Head, useForm, usePage, router } from '@inertiajs/vue3';
 import { ref, computed } from 'vue';
 import Button from 'primevue/button';
+import Dialog from 'primevue/dialog';
 import InputText from 'primevue/inputtext';
 import Select from 'primevue/select';
 
@@ -355,133 +356,106 @@ const getInitials = (name) => {
             </div>
         </div>
 
-        <!-- 👑 5. Create / Edit User Modal (Teleport to Body with Backdrop Blur) -->
-        <Teleport to="body">
-            <div
-                v-if="isModalOpen"
-                class="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md transition-all duration-200"
-                @click.self="closeModal"
-            >
-                <div class="w-full max-w-lg bg-white border border-surface-200 shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-                    <!-- Modal Header -->
-                    <div class="px-6 py-4 bg-[#1c3633] text-white flex items-center justify-between border-b border-[#c08f34]/30">
-                        <div class="flex items-center gap-2.5">
-                            <i class="pi pi-user-edit text-[#c08f34]"></i>
-                            <h3 class="text-sm font-bold tracking-wide">
-                                {{ isEditing ? 'Edit User Account & Role' : 'Create New System User' }}
-                            </h3>
-                        </div>
+        <!-- 👑 5. Create / Edit User Dialog (PrimeVue Standard Modal matching ERP) -->
+        <Dialog
+            v-model:visible="isModalOpen"
+            :header="isEditing ? 'Edit User Account & Role' : 'Create New System User'"
+            modal
+            :style="{ width: '32rem' }"
+            :breakpoints="{ '640px': '95vw' }"
+            @hide="closeModal"
+        >
+            <form @submit.prevent="submitUser" class="space-y-4 pt-2">
+                <div>
+                    <label class="block text-xs font-bold text-surface-700 uppercase tracking-wider mb-1.5">
+                        Full Name <span class="text-red-500">*</span>
+                    </label>
+                    <InputText
+                        v-model="userForm.name"
+                        class="w-full text-xs"
+                        placeholder="e.g. Rahul Sharma"
+                        required
+                    />
+                    <small v-if="userForm.errors.name" class="text-red-500 text-[11px] block mt-1">
+                        {{ userForm.errors.name }}
+                    </small>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-surface-700 uppercase tracking-wider mb-1.5">
+                        Email Address <span class="text-red-500">*</span>
+                    </label>
+                    <InputText
+                        v-model="userForm.email"
+                        type="email"
+                        class="w-full text-xs"
+                        placeholder="rahul@maniratnjewellers.com"
+                        required
+                    />
+                    <small v-if="userForm.errors.email" class="text-red-500 text-[11px] block mt-1">
+                        {{ userForm.errors.email }}
+                    </small>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-surface-700 uppercase tracking-wider mb-1.5">
+                        Assigned System Role <span class="text-red-500">*</span>
+                    </label>
+                    <Select
+                        v-model="userForm.role"
+                        :options="formRoleOptions"
+                        optionLabel="label"
+                        optionValue="value"
+                        class="w-full text-xs"
+                        required
+                    />
+                    <small class="text-surface-400 text-[10px] block mt-1">
+                        Super Admin has full privileges; AI Operator can test playground; Viewer is read-only.
+                    </small>
+                    <small v-if="userForm.errors.role" class="text-red-500 text-[11px] block mt-1">
+                        {{ userForm.errors.role }}
+                    </small>
+                </div>
+
+                <div>
+                    <div class="flex items-center justify-between mb-1.5">
+                        <label class="block text-xs font-bold text-surface-700 uppercase tracking-wider">
+                            {{ isEditing ? 'New Password (Optional)' : 'Password' }}
+                            <span v-if="!isEditing" class="text-red-500">*</span>
+                        </label>
                         <button
                             type="button"
-                            @click="closeModal"
-                            class="h-7 w-7 flex items-center justify-center text-white/70 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+                            @click="showPassword = !showPassword"
+                            class="text-[11px] text-[#c08f34] hover:underline cursor-pointer"
                         >
-                            <i class="pi pi-times text-xs"></i>
+                            {{ showPassword ? 'Hide' : 'Show' }}
                         </button>
                     </div>
-
-                    <!-- Modal Body Form -->
-                    <form @submit.prevent="submitUser" class="p-6 space-y-4">
-                        <div>
-                            <label class="block text-xs font-bold text-surface-700 uppercase tracking-wider mb-1.5">
-                                Full Name <span class="text-red-500">*</span>
-                            </label>
-                            <InputText
-                                v-model="userForm.name"
-                                class="w-full text-xs"
-                                placeholder="e.g. Rahul Sharma"
-                                required
-                            />
-                            <small v-if="userForm.errors.name" class="text-red-500 text-[11px] block mt-1">
-                                {{ userForm.errors.name }}
-                            </small>
-                        </div>
-
-                        <div>
-                            <label class="block text-xs font-bold text-surface-700 uppercase tracking-wider mb-1.5">
-                                Email Address <span class="text-red-500">*</span>
-                            </label>
-                            <InputText
-                                v-model="userForm.email"
-                                type="email"
-                                class="w-full text-xs"
-                                placeholder="rahul@maniratnjewellers.com"
-                                required
-                            />
-                            <small v-if="userForm.errors.email" class="text-red-500 text-[11px] block mt-1">
-                                {{ userForm.errors.email }}
-                            </small>
-                        </div>
-
-                        <div>
-                            <label class="block text-xs font-bold text-surface-700 uppercase tracking-wider mb-1.5">
-                                Assigned System Role <span class="text-red-500">*</span>
-                            </label>
-                            <Select
-                                v-model="userForm.role"
-                                :options="formRoleOptions"
-                                optionLabel="label"
-                                optionValue="value"
-                                class="w-full text-xs"
-                                required
-                            />
-                            <small class="text-surface-400 text-[10px] block mt-1">
-                                Super Admin has full privileges; AI Operator can test playground and view keys; Viewer is read-only.
-                            </small>
-                            <small v-if="userForm.errors.role" class="text-red-500 text-[11px] block mt-1">
-                                {{ userForm.errors.role }}
-                            </small>
-                        </div>
-
-                        <div>
-                            <div class="flex items-center justify-between mb-1.5">
-                                <label class="block text-xs font-bold text-surface-700 uppercase tracking-wider">
-                                    {{ isEditing ? 'New Password (Leave blank to keep existing)' : 'Password' }}
-                                    <span v-if="!isEditing" class="text-red-500">*</span>
-                                </label>
-                                <button
-                                    type="button"
-                                    @click="showPassword = !showPassword"
-                                    class="text-[11px] text-[#c08f34] hover:underline cursor-pointer"
-                                >
-                                    {{ showPassword ? 'Hide' : 'Show' }}
-                                </button>
-                            </div>
-                            <div class="relative">
-                                <input
-                                    v-model="userForm.password"
-                                    :type="showPassword ? 'text' : 'password'"
-                                    class="w-full h-10 px-3 border border-surface-300 bg-white text-xs text-surface-800 focus:outline-none focus:border-[#c08f34]"
-                                    :placeholder="isEditing ? 'Enter new password if changing' : 'Minimum 6 characters'"
-                                    :required="!isEditing"
-                                />
-                            </div>
-                            <small v-if="userForm.errors.password" class="text-red-500 text-[11px] block mt-1">
-                                {{ userForm.errors.password }}
-                            </small>
-                        </div>
-
-                        <!-- Modal Actions -->
-                        <div class="flex items-center justify-end gap-3 pt-4 border-t border-surface-200">
-                            <button
-                                type="button"
-                                @click="closeModal"
-                                class="px-4 py-2 border border-surface-300 text-surface-700 hover:bg-surface-50 text-xs font-semibold cursor-pointer"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                type="submit"
-                                :disabled="userForm.processing"
-                                class="px-5 py-2 bg-[#1c3633] hover:bg-[#264a46] text-white text-xs font-bold transition-all shadow-xs cursor-pointer border border-[#c08f34]/40 disabled:opacity-50"
-                            >
-                                <i class="pi pi-check text-xs mr-1 text-[#c08f34]"></i>
-                                {{ isEditing ? 'Update User' : 'Save New User' }}
-                            </button>
-                        </div>
-                    </form>
+                    <InputText
+                        v-model="userForm.password"
+                        :type="showPassword ? 'text' : 'password'"
+                        class="w-full text-xs"
+                        :placeholder="isEditing ? 'Leave blank to keep existing password' : 'Minimum 6 characters'"
+                        :required="!isEditing"
+                    />
+                    <small v-if="userForm.errors.password" class="text-red-500 text-[11px] block mt-1">
+                        {{ userForm.errors.password }}
+                    </small>
                 </div>
-            </div>
-        </Teleport>
+            </form>
+
+            <template #footer>
+                <div class="flex items-center justify-end gap-2 pt-3 border-t border-surface-200">
+                    <Button label="Cancel" text severity="secondary" size="small" @click="closeModal" />
+                    <Button
+                        :label="isEditing ? 'Update User' : 'Save New User'"
+                        icon="pi pi-check"
+                        size="small"
+                        :loading="userForm.processing"
+                        @click="submitUser"
+                    />
+                </div>
+            </template>
+        </Dialog>
     </AppLayout>
 </template>

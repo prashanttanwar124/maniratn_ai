@@ -167,4 +167,72 @@
     font-weight: 600 !important;
 }
 
+/* 🏛️ PrimeVue Dialog Royal Enterprise Customization (Matching KaratSetu ERP) */
+.p-dialog {
+    border-radius: 0 !important;
+    border: 1px solid #e5e7eb !important;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1) !important;
+    background-color: #ffffff !important;
+}
+
+.p-dialog-header {
+    background-color: #ffffff !important;
+    border-bottom: 1px solid #f3f4f6 !important;
+    padding: 1.1rem 1.25rem !important;
+}
+
+.p-dialog-title {
+    font-size: 0.95rem !important;
+    font-weight: 700 !important;
+    color: #1c3633 !important;
+    letter-spacing: -0.01em !important;
+}
+
+.p-dialog-content {
+    padding: 1.25rem !important;
+    background-color: #ffffff !important;
+}
+
+.p-dialog-footer {
+    background-color: #f9fafb !important;
+    border-top: 1px solid #f3f4f6 !important;
+    padding: 0.85rem 1.25rem !important;
+}
+
+.p-dialog-mask {
+    backdrop-filter: none !important;
+    background-color: rgba(0, 0, 0, 0.35) !important;
+}
+
+/* 💎 PrimeVue Button & Input Customization */
+.p-button {
+    border-radius: 0 !important;
+    font-size: 12.5px !important;
+    font-weight: 600 !important;
+    transition: all 0.15s ease !important;
+}
+
+.p-button:not(.p-button-text):not(.p-button-outlined):not(.p-button-secondary):not(.p-button-danger) {
+    background-color: #1c3633 !important;
+    border-color: #1c3633 !important;
+    color: #ffffff !important;
+}
+
+.p-button:not(.p-button-text):not(.p-button-outlined):not(.p-button-secondary):not(.p-button-danger):hover {
+    background-color: #254642 !important;
+    border-color: #254642 !important;
+}
+
+.p-inputtext {
+    border-radius: 0 !important;
+    border-color: #d1d5db !important;
+    font-size: 12.5px !important;
+}
+
+.p-inputtext:focus {
+    border-color: #1c3633 !important;
+    box-shadow: 0 0 0 1px #1c3633 !important;
+}
+
+
 

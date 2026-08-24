@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import axios from 'axios';
 import AppLayout from '@/layout/AppLayout.vue';
+import Button from 'primevue/button';
+import Dialog from 'primevue/dialog';
+import InputText from 'primevue/inputtext';
 import Select from 'primevue/select';
 import {
     Activity,
@@ -857,131 +860,101 @@ curl -X POST http://127.0.0.1:8001/api/ai/chat \
             </div>
         </div>
 
-        <!-- 📝 Generate New Token Modal (Royal Enterprise Dialog) -->
-        <Teleport to="body">
-            <div
-                v-if="isCreateModalOpen"
-                class="fixed inset-0 z-[99999] flex items-center justify-center bg-black/60 backdrop-blur-md p-4 animate-in fade-in duration-200"
-                @click.self="isCreateModalOpen = false"
-            >
-                <div class="w-full max-w-lg bg-white border border-[#c08f34]/50 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
-                    <!-- Royal Modal Header Banner -->
-                    <div class="bg-[#1c3633] p-5 border-b border-[#c08f34]/30 text-white flex items-center justify-between">
-                        <div class="flex items-center gap-3">
-                            <div class="w-8 h-8 bg-white/10 border border-[#c08f34]/50 flex items-center justify-center text-[#c08f34]">
-                                <Key class="w-4 h-4" />
-                            </div>
-                            <div>
-                                <h3 class="text-sm font-bold text-white uppercase tracking-wider font-serif">Issue Showroom API Key</h3>
-                                <p class="text-[11px] text-white/70">Connect a jewellery store instance to Central AI Hub</p>
-                            </div>
-                        </div>
-                        <button
-                            type="button"
-                            class="text-white/60 hover:text-white cursor-pointer transition-colors p-1"
-                            @click="isCreateModalOpen = false"
-                        >
-                            <X class="w-5 h-5" />
-                        </button>
+        <!-- 📝 Generate New Token Modal (PrimeVue Standard Dialog matching ERP) -->
+        <Dialog
+            v-model:visible="isCreateModalOpen"
+            header="Issue Showroom API Key"
+            modal
+            :style="{ width: '32rem' }"
+            :breakpoints="{ '640px': '95vw' }"
+        >
+            <div class="space-y-4 pt-2 text-xs">
+                <div>
+                    <label class="block font-bold text-surface-700 uppercase tracking-wider mb-1.5">
+                        Showroom / Store Name <span class="text-[#c08f34]">*</span>
+                    </label>
+                    <InputText
+                        v-model="newKeyForm.business_name"
+                        type="text"
+                        placeholder="e.g. Maniratn Jewellers (Jaipur Branch)"
+                        class="w-full text-xs"
+                    />
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block font-bold text-surface-700 uppercase tracking-wider mb-1.5">Environment Type</label>
+                        <Select
+                            v-model="newKeyForm.type"
+                            :options="typeOptions"
+                            optionLabel="label"
+                            optionValue="value"
+                            placeholder="Select Environment"
+                            class="w-full text-xs"
+                        />
                     </div>
 
-                    <!-- Modal Body -->
-                    <div class="p-6 space-y-4 text-xs bg-white">
-                        <div>
-                            <label class="block font-bold text-[#1c3633] uppercase tracking-wider mb-1.5">
-                                Showroom / Store Name <span class="text-[#c08f34]">*</span>
-                            </label>
-                            <input
-                                v-model="newKeyForm.business_name"
-                                type="text"
-                                placeholder="e.g. Maniratn Jewellers (Jaipur Branch)"
-                                class="w-full h-10 px-3.5 border border-surface-300 bg-surface-50 text-[#1c3633] font-medium outline-hidden focus:border-[#1c3633] focus:bg-white transition-colors"
-                            />
-                        </div>
-
-                        <div class="grid grid-cols-2 gap-4">
-                            <div>
-                                <label class="block font-bold text-[#1c3633] uppercase tracking-wider mb-1.5">Environment Type</label>
-                                <Select
-                                    v-model="newKeyForm.type"
-                                    :options="typeOptions"
-                                    optionLabel="label"
-                                    optionValue="value"
-                                    placeholder="Select Environment"
-                                    class="w-full text-xs"
-                                />
-                            </div>
-
-                            <div>
-                                <label class="block font-bold text-[#1c3633] uppercase tracking-wider mb-1.5">Subscription Tier</label>
-                                <Select
-                                    v-model="newKeyForm.plan"
-                                    :options="planOptions"
-                                    optionLabel="label"
-                                    optionValue="value"
-                                    placeholder="Select Plan"
-                                    class="w-full text-xs"
-                                />
-                            </div>
-                        </div>
-
-                        <div class="grid grid-cols-2 gap-4">
-                            <div>
-                                <label class="block font-bold text-[#1c3633] uppercase tracking-wider mb-1.5">Contact Phone</label>
-                                <input
-                                    v-model="newKeyForm.contact_phone"
-                                    type="text"
-                                    placeholder="+91 98765 43210"
-                                    class="w-full h-10 px-3.5 border border-surface-300 bg-surface-50 text-[#1c3633] font-medium outline-hidden focus:border-[#1c3633] focus:bg-white"
-                                />
-                            </div>
-
-                            <div>
-                                <label class="block font-bold text-[#1c3633] uppercase tracking-wider mb-1.5">Contact Email</label>
-                                <input
-                                    v-model="newKeyForm.contact_email"
-                                    type="email"
-                                    placeholder="store@maniratn.com"
-                                    class="w-full h-10 px-3.5 border border-surface-300 bg-surface-50 text-[#1c3633] font-medium outline-hidden focus:border-[#1c3633] focus:bg-white"
-                                />
-                            </div>
-                        </div>
-
-                        <div class="flex items-center gap-2.5 pt-3 border-t border-surface-200">
-                            <input
-                                type="checkbox"
-                                id="modal_voice_toggle"
-                                v-model="newKeyForm.voice_enabled"
-                                class="w-4 h-4 text-[#1c3633] accent-[#1c3633] cursor-pointer"
-                            />
-                            <label for="modal_voice_toggle" class="font-bold text-[#1c3633] cursor-pointer">
-                                Enable Gemini Studio HD Voice for this Showroom
-                            </label>
-                        </div>
-                    </div>
-
-                    <!-- Modal Footer -->
-                    <div class="p-4 bg-surface-50 border-t border-surface-200 flex items-center justify-end gap-3">
-                        <button
-                            type="button"
-                            class="px-4 h-9 border border-surface-300 text-xs font-bold text-surface-700 hover:bg-surface-100 cursor-pointer transition-colors"
-                            @click="isCreateModalOpen = false"
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            type="button"
-                            :disabled="isSubmittingKey"
-                            class="px-5 h-9 bg-[#1c3633] hover:bg-[#254642] text-white text-xs font-bold flex items-center gap-2 cursor-pointer transition-all shadow-xs border border-[#c08f34]/30"
-                            @click="submitCreateKey"
-                        >
-                            <Sparkles class="w-4 h-4 text-[#c08f34]" />
-                            <span>{{ isSubmittingKey ? 'Generating Token...' : 'Create & Issue Token' }}</span>
-                        </button>
+                    <div>
+                        <label class="block font-bold text-surface-700 uppercase tracking-wider mb-1.5">Subscription Tier</label>
+                        <Select
+                            v-model="newKeyForm.plan"
+                            :options="planOptions"
+                            optionLabel="label"
+                            optionValue="value"
+                            placeholder="Select Plan"
+                            class="w-full text-xs"
+                        />
                     </div>
                 </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block font-bold text-surface-700 uppercase tracking-wider mb-1.5">Contact Phone</label>
+                        <InputText
+                            v-model="newKeyForm.contact_phone"
+                            type="text"
+                            placeholder="+91 98765 43210"
+                            class="w-full text-xs"
+                        />
+                    </div>
+
+                    <div>
+                        <label class="block font-bold text-surface-700 uppercase tracking-wider mb-1.5">Contact Email</label>
+                        <InputText
+                            v-model="newKeyForm.contact_email"
+                            type="email"
+                            placeholder="store@maniratn.com"
+                            class="w-full text-xs"
+                        />
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-2.5 pt-3 border-t border-surface-200">
+                    <input
+                        type="checkbox"
+                        id="modal_voice_toggle"
+                        v-model="newKeyForm.voice_enabled"
+                        class="w-4 h-4 text-[#1c3633] accent-[#1c3633] cursor-pointer"
+                    />
+                    <label for="modal_voice_toggle" class="font-medium text-surface-800 cursor-pointer">
+                        Enable Gemini Studio HD Voice for this Showroom
+                    </label>
+                </div>
             </div>
-        </Teleport>
+
+            <template #footer>
+                <div class="flex items-center justify-end gap-2 pt-3 border-t border-surface-200">
+                    <Button label="Cancel" text severity="secondary" size="small" @click="isCreateModalOpen = false" />
+                    <Button
+                        label="Create & Issue Token"
+                        icon="pi pi-check"
+                        size="small"
+                        :loading="isSubmittingKey"
+                        @click="submitCreateKey"
+                    />
+                </div>
+            </template>
+        </Dialog>
     </AppLayout>
 </template>
 
