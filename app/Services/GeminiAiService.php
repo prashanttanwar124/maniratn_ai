@@ -413,8 +413,9 @@ class GeminiAiService
             $result = $response->json();
             $candidate = $result['candidates'][0] ?? null;
             $parts = $candidate['content']['parts'] ?? [];
-
             $actionsExecuted = [];
+            $functionCalls = [];
+            $modelParts = [];
             $finalText = '';
 
             foreach ($parts as $part) {
@@ -429,25 +430,68 @@ class GeminiAiService
                         'args' => $args,
                         'result' => $toolResult,
                     ];
-
-                    // Instant 1-turn response: Generate clean confirmation immediately (0ms latency, zero timeouts!)
-                    if ($functionName === 'get_daily_rates') {
-                        $finalText = "24K Gold ₹" . number_format($toolResult['gold_24k_per_gm'] ?? 7450) . ", 22K ₹" . number_format($toolResult['gold_22k_per_gm'] ?? 6830) . ", Silver ₹" . number_format($toolResult['silver_per_gm'] ?? 88.50, 2) . " per gram hai.";
-                    } elseif ($functionName === 'update_daily_rates') {
-                        $finalText = "Maine live rates update ka draft preview prepare kar diya hai. Kripya rates check karke Confirm karein.";
-                    } elseif ($functionName === 'add_product') {
-                        $finalText = "Maine naye ornament ka draft preview prepare kar diya hai. Kripya details check karke Confirm karein.";
-                    } elseif ($functionName === 'get_vault_balance') {
-                        $finalText = "Vault me Cash " . ($toolResult['cash_in_hand'] ?? '') . ", Gold " . ($toolResult['gold_in_vault'] ?? '') . ", aur Silver " . ($toolResult['silver_in_vault'] ?? '') . " safe me hai.";
-                    } elseif ($functionName === 'calculate_estimate') {
-                        $finalText = "Total estimate quotation " . ($toolResult['total_estimate'] ?? '') . " banega.";
-                    } elseif ($functionName === 'create_bill' || $functionName === 'create_invoice') {
-                        $finalText = "Maine Bill ka draft preview prepare kar diya hai. Kripya details check karein aur Confirm karein.";
-                    } elseif ($functionName === 'check_stock') {
-                        $finalText = "Showroom stock inventory me total items check kar liye hain.";
-                    }
+                    $functionCalls[] = [
+                        'name' => $functionName,
+                        'result' => $toolResult,
+                    ];
+                    $modelParts[] = $part;
                 } elseif (isset($part['text'])) {
                     $finalText .= $part['text'];
+                    $modelParts[] = $part;
+                }
+            }
+
+            // 🤖 TRUE 2-TURN GEMINI REASONING: Feed real ERP database tool results back to Gemini
+            if (! empty($functionCalls)) {
+                $contents[] = [
+                    'role' => 'model',
+                    'parts' => $modelParts,
+                ];
+
+                $functionResponseParts = [];
+                foreach ($functionCalls as $fc) {
+                    $functionResponseParts[] = [
+                        'functionResponse' => [
+                            'name' => $fc['name'],
+                            'response' => [
+                                'name' => $fc['name'],
+                                'content' => $fc['result'],
+                            ],
+                        ],
+                    ];
+                }
+
+                $contents[] = [
+                    'role' => 'user',
+                    'parts' => $functionResponseParts,
+                ];
+
+                $secondPayload = [
+                    'contents' => $contents,
+                    'systemInstruction' => [
+                        'parts' => [['text' => $systemInstruction]],
+                    ],
+                    'generationConfig' => [
+                        'temperature' => 0.2,
+                        'maxOutputTokens' => 400,
+                    ],
+                ];
+
+                try {
+                    $secondResponse = Http::timeout(15)
+                        ->connectTimeout(5)
+                        ->withHeaders(['Content-Type' => 'application/json'])
+                        ->post($url, $secondPayload);
+
+                    if ($secondResponse->successful()) {
+                        $secondResult = $secondResponse->json();
+                        $secondText = $secondResult['candidates'][0]['content']['parts'][0]['text'] ?? '';
+                        if (! empty(trim($secondText))) {
+                            $finalText = trim($secondText);
+                        }
+                    }
+                } catch (\Throwable $e) {
+                    Log::warning('Gemini 2nd turn natural reply timeout, using fallback: ' . $e->getMessage());
                 }
             }
 
