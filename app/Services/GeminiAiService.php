@@ -129,13 +129,13 @@ class GeminiAiService
                                     'type' => 'STRING',
                                     'description' => 'Purity (e.g. 22K, 18K, 24K)',
                                 ],
-                                'making_charge_per_gram' => [
-                                    'type' => 'NUMBER',
-                                    'description' => 'Making charges per gram in INR (e.g. 450)',
-                                ],
                                 'making_percent' => [
                                     'type' => 'NUMBER',
-                                    'description' => 'Making charges percentage on metal value (e.g. 12 for 12%)',
+                                    'description' => 'Making charges percentage on metal value (default 12 for 12%)',
+                                ],
+                                'making_charge_per_gram' => [
+                                    'type' => 'NUMBER',
+                                    'description' => 'Making charges per gram in INR (optional, only if user explicitly asks for per gram)',
                                 ],
                             ],
                             'required' => ['weight'],
@@ -143,7 +143,7 @@ class GeminiAiService
                     ],
                     [
                         'name' => 'create_bill',
-                        'description' => 'Create and generate a customer sale invoice/bill for jewellery items (gold, silver, or custom ornament) in the ERP with automatic GST, customer creation/lookup, payment method, and direct invoice view link.',
+                        'description' => 'Create and generate a customer sale invoice/bill for jewellery items (gold, silver, or custom ornament) in the ERP with automatic 12% making charge, 3% GST, customer creation/lookup, payment method, and direct invoice view link.',
                         'parameters' => [
                             'type' => 'OBJECT',
                             'properties' => [
@@ -175,13 +175,13 @@ class GeminiAiService
                                     'type' => 'NUMBER',
                                     'description' => 'Gold/Silver rate per gram in INR (optional, defaults to today\'s live rate in DB)',
                                 ],
-                                'making_charge_per_gram' => [
-                                    'type' => 'NUMBER',
-                                    'description' => 'Making charges in INR per gram (e.g. 450)',
-                                ],
                                 'making_percent' => [
                                     'type' => 'NUMBER',
-                                    'description' => 'Making charges percentage (e.g. 10 for 10%)',
+                                    'description' => 'Making charges percentage on metal value (default 12 for 12%)',
+                                ],
+                                'making_charge_per_gram' => [
+                                    'type' => 'NUMBER',
+                                    'description' => 'Making charges in INR per gram (optional, only if user explicitly asks for per gram)',
                                 ],
                                 'payment_mode' => [
                                     'type' => 'STRING',
@@ -518,10 +518,20 @@ class GeminiAiService
                 $purity = $args['purity'] ?? '22K';
 
                 $ratePerGm = ($metal === 'SILVER') ? 88.50 : 6830;
-                $makingPerGm = 450;
-
                 $metalValue = $weight * $ratePerGm;
-                $makingTotal = $weight * $makingPerGm;
+
+                $makingPercent = isset($args['making_percent']) ? floatval($args['making_percent']) : null;
+                $makingPerGm = isset($args['making_charge_per_gram']) ? floatval($args['making_charge_per_gram']) : null;
+
+                if ($makingPerGm !== null && $makingPerGm > 0) {
+                    $makingTotal = $weight * $makingPerGm;
+                    $makingLabel = "(@ ₹{$makingPerGm}/g)";
+                } else {
+                    $makingPercent = ($makingPercent !== null && $makingPercent > 0) ? $makingPercent : 12.0;
+                    $makingTotal = $metalValue * ($makingPercent / 100);
+                    $makingLabel = "({$makingPercent}%)";
+                }
+
                 $subtotal = $metalValue + $makingTotal;
                 $gst = $subtotal * 0.03;
                 $grandTotal = $subtotal + $gst;
@@ -532,7 +542,7 @@ class GeminiAiService
                     'purity' => $purity,
                     'rate_per_gm' => '₹' . number_format($ratePerGm, 2),
                     'metal_value' => '₹' . number_format($metalValue, 2),
-                    'making_charges' => '₹' . number_format($makingTotal, 2) . " (@ ₹{$makingPerGm}/g)",
+                    'making_charges' => '₹' . number_format($makingTotal, 2) . " {$makingLabel}",
                     'subtotal' => '₹' . number_format($subtotal, 2),
                     'gst_3_percent' => '₹' . number_format($gst, 2),
                     'total_estimate' => '₹' . number_format($grandTotal, 2),
