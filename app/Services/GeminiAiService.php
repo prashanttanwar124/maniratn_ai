@@ -66,13 +66,17 @@ class GeminiAiService
                     ],
                     [
                         'name' => 'add_product',
-                        'description' => 'Add a new jewellery stock item or ornament into inventory with auto-generated barcode.',
+                        'description' => 'Add one or multiple new jewellery stock items/ornaments into inventory with auto-generated individual barcodes.',
                         'parameters' => [
                             'type' => 'OBJECT',
                             'properties' => [
                                 'name' => [
                                     'type' => 'STRING',
-                                    'description' => 'Ornament title (e.g. 22K Gold Antique Necklace, Plain Ring)',
+                                    'description' => 'Ornament title (e.g. 22K Gold Antique Necklace, Plain Ring, Gold Chain)',
+                                ],
+                                'quantity' => [
+                                    'type' => 'INTEGER',
+                                    'description' => 'Number of pieces/quantity to add to stock (default 1). E.g. 2 for "2 chain", 5 for "5 rings".',
                                 ],
                                 'category' => [
                                     'type' => 'STRING',
@@ -88,7 +92,7 @@ class GeminiAiService
                                 ],
                                 'weight' => [
                                     'type' => 'NUMBER',
-                                    'description' => 'Gross/Net weight in grams (e.g. 14.5)',
+                                    'description' => 'Gross/Net weight per piece in grams (e.g. 4.0, 14.5)',
                                 ],
                                 'making_charge_per_gram' => [
                                     'type' => 'NUMBER',
@@ -437,7 +441,16 @@ class GeminiAiService
           - 999 / 24K = 24 Karat (24K) -> 99.9% fine gold
           - Silver = Silver 999 purity
 
-        STOCK PRODUCT ADDITION:
+        STOCK PRODUCT ADDITION (WITH MULTI-PIECE QUANTITY):
+        - When the user asks to add items into stock (e.g. 'add 2 chain for 4 gm in stock', '5 gold ring add karo 3g ki', 'add 1 gold pendant 2.5g'):
+          - Extract:
+            - `quantity` (e.g. 2 for '2 chain', 5 for '5 gold ring', default 1)
+            - `weight` (weight per piece in grams, e.g. 4)
+            - `name` (e.g. 'Gold Chain', 'Gold Ring', '22K Gold Chain')
+            - `metal` ('GOLD' or 'SILVER')
+            - `purity` (e.g. '22K', '18K', '92.5')
+            - `category` (e.g. 'Chain', 'Ring', 'Pendant')
+          - Call `add_product` with `name`, `weight`, `quantity`, `metal`, `purity`, `category`.
         - If weight/name is missing: Ask 'Product ka naam aur gross weight (grams) kya hai?'
 
         INVENTORY & STOCK SEARCH WORKFLOW:
@@ -753,6 +766,7 @@ class GeminiAiService
             case 'add_product':
                 $name = $args['name'] ?? 'Gold Ornament';
                 $weight = floatval($args['weight'] ?? 0);
+                $quantity = max(1, intval($args['quantity'] ?? ($args['qty'] ?? 1)));
                 $metal = strtoupper($args['metal'] ?? 'GOLD');
                 $purity = $args['purity'] ?? ($metal === 'GOLD' ? '22K' : '92.5');
                 $category = $args['category'] ?? 'General';
@@ -766,6 +780,8 @@ class GeminiAiService
                     'metal' => $metal,
                     'purity' => $purity,
                     'weight' => $weight,
+                    'quantity' => $quantity,
+                    'total_weight' => round($weight * $quantity, 3),
                     'category' => $category,
                     'making_charge_per_gm' => $makingCharge,
                     'status' => 'CONFIRMATION_REQUIRED',
