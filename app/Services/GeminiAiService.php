@@ -246,6 +246,69 @@ class GeminiAiService
                             ],
                         ],
                     ],
+                    [
+                        'name' => 'get_customer_khata',
+                        'description' => 'Inquire customer ledger, udhar / pending due balance, total purchase history, and account status by customer name or phone number.',
+                        'parameters' => [
+                            'type' => 'OBJECT',
+                            'properties' => [
+                                'customer_name' => [
+                                    'type' => 'STRING',
+                                    'description' => 'Customer name (e.g. Ramesh Sharma)',
+                                ],
+                                'phone' => [
+                                    'type' => 'STRING',
+                                    'description' => 'Customer mobile number (e.g. 9876543210)',
+                                ],
+                                'query' => [
+                                    'type' => 'STRING',
+                                    'description' => 'Customer name or phone search query',
+                                ],
+                            ],
+                        ],
+                    ],
+                    [
+                        'name' => 'search_invoices',
+                        'description' => 'Search and retrieve customer purchase history, past bills, and invoices by phone number, customer name, invoice number, or date.',
+                        'parameters' => [
+                            'type' => 'OBJECT',
+                            'properties' => [
+                                'phone' => [
+                                    'type' => 'STRING',
+                                    'description' => 'Customer mobile number',
+                                ],
+                                'customer_name' => [
+                                    'type' => 'STRING',
+                                    'description' => 'Customer name',
+                                ],
+                                'invoice_number' => [
+                                    'type' => 'STRING',
+                                    'description' => 'Invoice or bill number (e.g. INV-20260815-000001)',
+                                ],
+                                'date' => [
+                                    'type' => 'STRING',
+                                    'description' => 'Invoice date in YYYY-MM-DD format',
+                                ],
+                                'query' => [
+                                    'type' => 'STRING',
+                                    'description' => 'General invoice search term',
+                                ],
+                            ],
+                        ],
+                    ],
+                    [
+                        'name' => 'get_sales_summary',
+                        'description' => 'Get showroom sales report, daily counter revenue, total collection (Cash, UPI, Card), and total gold/silver weight sold.',
+                        'parameters' => [
+                            'type' => 'OBJECT',
+                            'properties' => [
+                                'period' => [
+                                    'type' => 'STRING',
+                                    'description' => 'Time period: "today" (default), "yesterday", "this_week", or "this_month"',
+                                ],
+                            ],
+                        ],
+                    ],
                 ],
             ],
         ];
@@ -382,6 +445,18 @@ class GeminiAiService
             - `metal` ('GOLD' or 'SILVER')
             - `purity` (if mentioned, e.g. '22K', '18K')
           - Always focus strictly on the requested category and weight!
+
+        CUSTOMER KHATA / UDHAR BALANCE FLOW:
+        - When user asks about a customer's udhar, balance, or khata (e.g. 'Ramesh ka kitna udhar hai?', 'Deepak ka khata balance batao', '9876543210 ka balance kya hai'):
+          - Call `get_customer_khata` with `customer_name` or `phone` or `query`.
+
+        PREVIOUS INVOICE / PURCHASE SEARCH FLOW:
+        - When user asks to search past bills or purchase history (e.g. '9876543210 ka pichla bill dikhao', 'Ravi Verma ne pichla bill kab banwaya tha', 'Bill INV-0001 search karo'):
+          - Call `search_invoices` with `phone`, `customer_name`, or `invoice_number`.
+
+        SHOWROOM SALES & COUNTER SUMMARY FLOW:
+        - When user asks for sales report or counter collections (e.g. 'Aaj ki sale kitni hui?', 'Aaj kitna sona bika?', 'Total counter collection kitna hai?', 'Kal ki sale kya thi?'):
+          - Call `get_sales_summary` with `period: 'today'` (or 'yesterday', 'this_month').
 
         HUMAN-IN-THE-LOOP SAFETY & PREVIEW RULES:
         - When calling `create_bill`, `add_product`, or `update_daily_rates`, the ERP system will FIRST present an interactive editable preview draft in the UI.
@@ -784,6 +859,24 @@ class GeminiAiService
                 return [
                     'status' => 'FORWARD_TO_ERP',
                     'query' => $args['query'] ?? 'Jewellery',
+                ];
+
+            case 'get_customer_khata':
+                return [
+                    'status' => 'FORWARD_TO_ERP',
+                    'customer' => $args['customer_name'] ?? ($args['query'] ?? ($args['phone'] ?? 'Customer')),
+                ];
+
+            case 'search_invoices':
+                return [
+                    'status' => 'FORWARD_TO_ERP',
+                    'search_query' => $args['phone'] ?? ($args['customer_name'] ?? ($args['invoice_number'] ?? ($args['query'] ?? 'Invoices'))),
+                ];
+
+            case 'get_sales_summary':
+                return [
+                    'status' => 'FORWARD_TO_ERP',
+                    'period' => $args['period'] ?? 'today',
                 ];
 
             default:
