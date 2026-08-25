@@ -146,10 +146,14 @@ class GeminiAiService
                     ],
                     [
                         'name' => 'create_bill',
-                        'description' => 'Create and generate a customer sale invoice/bill for jewellery items (gold, silver, or custom ornament) in the ERP with automatic 12% making charge, 3% GST, customer creation/lookup, payment method, and direct invoice view link.',
+                        'description' => 'Create and generate a customer sale invoice/bill for a barcoded showroom stock item (gold or silver) in the ERP. A valid product stock barcode (e.g. G00019, S00005) is STRICTLY MANDATORY.',
                         'parameters' => [
                             'type' => 'OBJECT',
                             'properties' => [
+                                'barcode' => [
+                                    'type' => 'STRING',
+                                    'description' => 'Mandatory stock product barcode (e.g. G00019, S00005).',
+                                ],
                                 'customer_name' => [
                                     'type' => 'STRING',
                                     'description' => 'Customer full name (do NOT invent dummy names; leave empty or "Walk-in Customer" if not provided)',
@@ -158,41 +162,21 @@ class GeminiAiService
                                     'type' => 'STRING',
                                     'description' => 'Customer 10-digit mobile number (do NOT invent dummy numbers; leave empty if not provided)',
                                 ],
-                                'item_name' => [
-                                    'type' => 'STRING',
-                                    'description' => 'Jewellery item description (e.g. 22K Gold Chain, 18K Diamond Ring, Silver Payal)',
-                                ],
-                                'weight' => [
-                                    'type' => 'NUMBER',
-                                    'description' => 'Net weight in grams (e.g. 14.5, 10.2)',
-                                ],
-                                'metal' => [
-                                    'type' => 'STRING',
-                                    'description' => 'Metal type: GOLD or SILVER (default GOLD)',
-                                ],
-                                'purity' => [
-                                    'type' => 'STRING',
-                                    'description' => 'Purity (e.g. 22K, 18K, 24K, 92.5, 750, 916)',
-                                ],
                                 'rate_per_gm' => [
                                     'type' => 'NUMBER',
                                     'description' => 'Gold/Silver rate per gram in INR (optional, defaults to today\'s live rate in DB)',
                                 ],
                                 'making_percent' => [
                                     'type' => 'NUMBER',
-                                    'description' => 'Making charges percentage on metal value (default 12 for 12%)',
+                                    'description' => 'Making charges percentage on metal value (optional override)',
                                 ],
                                 'making_charge_per_gram' => [
                                     'type' => 'NUMBER',
-                                    'description' => 'Making charges in INR per gram (e.g. 450 per gram)',
+                                    'description' => 'Making charges in INR per gram (optional override)',
                                 ],
                                 'making_charge_flat' => [
                                     'type' => 'NUMBER',
-                                    'description' => 'Flat / Lump-sum making charges in INR (e.g. 1500 flat)',
-                                ],
-                                'barcode' => [
-                                    'type' => 'STRING',
-                                    'description' => 'Stock product barcode ONLY if explicitly mentioned by user (e.g. G00019). Do NOT invent a barcode for fresh custom items.',
+                                    'description' => 'Flat / Lump-sum making charges in INR (optional override)',
                                 ],
                                 'payment_mode' => [
                                     'type' => 'STRING',
@@ -207,6 +191,7 @@ class GeminiAiService
                                     'description' => 'Discount in INR (optional)',
                                 ],
                             ],
+                            'required' => ['barcode'],
                         ],
                     ],
                     [
@@ -429,23 +414,13 @@ class GeminiAiService
         Do NOT create the bill right away if essential fields are missing. Interactively ask the user step-by-step:
         1. Customer Details:
            - NEVER invent or hallucinate fake names (like 'Rahul Sharma', 'Amit') or fake numbers (like '9876543210').
-           - If customer name or mobile number is not provided, ask:
-             'Customer ka naam aur mobile number kya hai? (Ya agar Walk-in customer hai toh batayein).'
-           - If user says 'Walk-in', 'bina naam ke', or 'walkin', set customer_name = 'Walk-in Customer' and customer_phone = ''.
-        2. Item / Barcode & Weight:
-           - If neither barcode nor item name/weight is provided, ask:
-             'Kaunsa item ya barcode hai aur kitna weight hai?'
-           - If user provides a barcode (e.g. 'G00019'), pass 'barcode'.
-           - If user is billing a new custom item (e.g. '15g 22k gold chain'), do NOT invent or pass a barcode!
-        3. Making Charges & Payment Mode:
-           - If user provides customer and item details, execute `create_bill` with making charges (Percentage %, Per gram ₹/g, or Flat ₹) and payment method (Cash, UPI, Bank, Card, or Unpaid).
-        4. Once details are collected, call `create_bill` with:
-           - customer_name, customer_phone
-           - barcode (ONLY if specified) OR (item_name, weight, metal, purity)
-           - rate_per_gm (if custom)
-           - making_percent OR making_charge_per_gram OR making_charge_flat
-           - discount_amount
-           - payment_mode (CASH, UPI, CARD, BANK_TRANSFER, UNPAID)
+           - If customer name or mobile number is not provided, you can use 'Walk-in Customer'.
+        2. MANDATORY PRODUCT BARCODE:
+           - In this jewellery showroom ERP, a bill can ONLY be created for an existing barcoded stock product (e.g. 'G00019', 'G00021', 'S00005').
+           - If user asks to create a bill without providing a barcode (e.g. '15g chain ka bill bana do' or 'Rohan ke liye bill bana do'):
+             DO NOT call `create_bill`. Ask: 'Kripya item ka Barcode batayein ya scan karein (e.g. G00021). Showroom billing ke liye barcode anivary hai.'
+           - If user provides a barcode (e.g. 'G00021' or 'barcode G00021 ka bill banao'):
+             Call `create_bill` with `barcode: 'G00021'`, `customer_name`, `customer_phone`, and payment details. The ERP will automatically load the item's authentic name, weight, purity, and making charges directly from database stock.
 
         ESTIMATE QUOTATION & BARCODE FLOW:
         - When a user asks for an estimate / quotation by barcode (e.g. 'G00075 ka estimate bana do', 'G00075 barcode ka quotation nikalo', 'is barcode ka estimate'):
