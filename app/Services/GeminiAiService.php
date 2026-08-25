@@ -917,28 +917,19 @@ class GeminiAiService
             case 'calculate_old_gold':
             case 'old_gold_estimate':
                 $weight = floatval($args['weight'] ?? 10);
-                $purityStr = strtoupper(trim((string) ($args['purity'] ?? '22K')));
-                $purityMultiplier = 0.916;
-                $resolvedPurity = '22K (916 Hallmark)';
-                if (preg_match('/(\d+(?:\.\d+)?)\s*K/i', $purityStr, $m)) {
-                    $karat = floatval($m[1]);
-                    $purityMultiplier = round($karat / 24, 4);
-                    $pct = round(($karat / 24) * 100, 2);
-                    $resolvedPurity = "{$karat}K ({$pct}%)";
-                } elseif (preg_match('/(\d+(?:\.\d+)?)\s*%/i', $purityStr, $m)) {
-                    $pct = floatval($m[1]);
-                    $purityMultiplier = round($pct / 100, 4);
-                    $karat = round(($pct / 100) * 24, 1);
-                    $resolvedPurity = "{$pct}% ({$karat}K)";
-                } elseif (str_contains($purityStr, '24K') || str_contains($purityStr, '999')) {
-                    $purityMultiplier = 1.0;
-                    $resolvedPurity = '24K (99.9%)';
-                } elseif (str_contains($purityStr, '18K') || str_contains($purityStr, '750')) {
-                    $purityMultiplier = 0.750;
-                    $resolvedPurity = '18K (750 Hallmark)';
-                } elseif (str_contains($purityStr, '14K') || str_contains($purityStr, '585')) {
-                    $purityMultiplier = 0.585;
-                    $resolvedPurity = '14K (585 Hallmark)';
+                $purityMultiplier = floatval($args['purity_multiplier'] ?? ($args['purity_fraction'] ?? 0));
+                $resolvedPurity = trim((string) ($args['purity_label'] ?? ($args['purity'] ?? '22K')));
+
+                if ($purityMultiplier <= 0) {
+                    if (preg_match('/(\d+(?:\.\d+)?)\s*K/i', $resolvedPurity, $m)) {
+                        $purityMultiplier = round(floatval($m[1]) / 24, 4);
+                    } elseif (preg_match('/(\d+(?:\.\d+)?)\s*%/i', $resolvedPurity, $m)) {
+                        $purityMultiplier = round(floatval($m[1]) / 100, 4);
+                    } elseif (preg_match('/\b(999|916|750|585)\b/', $resolvedPurity, $m)) {
+                        $purityMultiplier = round(floatval($m[1]) / 1000, 4);
+                    } else {
+                        $purityMultiplier = 0.916;
+                    }
                 }
 
                 $base24kBuyRate = floatval($rates['gold_buy'] ?? ($rates['gold_sell'] ?? 7000));
