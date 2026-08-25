@@ -341,7 +341,12 @@ class GeminiAiService
         $cleanMsg = trim(strtolower(preg_replace('/[?!.,]/', '', $userMessage)));
         $greetings = [
             'hi' => 'Namaste! Main Karat AI Voice Copilot hoon. Aaj main aapki kya madad karoon?',
+            'hii' => 'Namaste! Main Karat AI Voice Copilot hoon. Aaj main aapki kya madad karoon?',
+            'helo' => 'Namaste! KaratSetu showroom operations me aapki kya sahayata karoon?',
             'hello' => 'Namaste! KaratSetu showroom operations me aapki kya sahayata karoon?',
+            'hey' => 'Namaste! KaratSetu showroom operations me aapki kya sahayata karoon?',
+            'yo' => 'Namaste! KaratSetu showroom copilot me aapka swagat hai. Aaj kya madad karoon?',
+            'sup' => 'Namaste! Sab badhiya hai showroom me. Aaj kya task karna hai?',
             'namaste' => 'Namaste! Aaj ka gold/silver bhav poochna hai, ya naya stock add karein?',
             'or batao' => 'Sab badhiya! Showroom me aaj ka live bhav check karna hai ya naya ornament add karna hai?',
             'aur batao' => 'Sab badhiya! Showroom me aaj ka live bhav check karna hai ya naya ornament add karna hai?',
@@ -523,109 +528,123 @@ EOD;
             ],
         ];
 
-        $url = "{$this->baseUrl}/models/{$this->model}:generateContent?key={$this->apiKey}";
-
         try {
-            $response = Http::timeout(35)
-                ->connectTimeout(10)
-                ->withHeaders(['Content-Type' => 'application/json'])
-                ->post($url, $payload);
+            $modelsToTry = array_unique([$this->model, 'gemini-3.1-flash-lite', 'gemini-3.5-flash']);
+            $response = null;
+            $activeModel = $this->model;
 
-            if (! $response->successful()) {
-                Log::error('Gemini API Error: ' . $response->body());
-                return [
-                    'reply' => 'Maaf kijiye, abhi AI server se connect hone me samasya aa rahi hai.',
-                    'actions' => [],
-                    'audio' => null,
-                    'cached' => false,
-                    'error' => $response->body(),
-                ];
-            }
+        foreach ($modelsToTry as $targetModel) {
+            $url = "{$this->baseUrl}/models/{$targetModel}:generateContent?key={$this->apiKey}";
+            try {
+                $response = Http::timeout(15)
+                    ->connectTimeout(5)
+                    ->withHeaders(['Content-Type' => 'application/json'])
+                    ->post($url, $payload);
 
-            $result = $response->json();
-            $candidate = $result['candidates'][0] ?? null;
-            $parts = $candidate['content']['parts'] ?? [];
-            $actionsExecuted = [];
-            $functionCalls = [];
-            $modelParts = [];
-            $finalText = '';
-
-            foreach ($parts as $part) {
-                if (isset($part['functionCall'])) {
-                    $functionCall = $part['functionCall'];
-                    $functionName = $functionCall['name'];
-                    $args = $functionCall['args'] ?? [];
-
-                    $toolResult = $this->executeTool($functionName, $args, $erpContext);
-                    $actionsExecuted[] = [
-                        'tool' => $functionName,
-                        'args' => $args,
-                        'result' => $toolResult,
-                    ];
-                    $functionCalls[] = [
-                        'name' => $functionName,
-                        'result' => $toolResult,
-                    ];
-                    $modelParts[] = $part;
-                } elseif (isset($part['text'])) {
-                    $finalText .= $part['text'];
-                    $modelParts[] = $part;
+                if ($response->successful()) {
+                    $activeModel = $targetModel;
+                    break;
                 }
+                Log::warning("Gemini model {$targetModel} returned status {$response->status()}, trying fallback...");
+            } catch (\Throwable $e) {
+                Log::warning("Gemini model {$targetModel} timeout/exception: {$e->getMessage()}, trying fallback...");
             }
+        }
 
-            // 🤖 TRUE 2-TURN GEMINI REASONING: Feed real ERP database tool results back to Gemini
-            if (! empty($functionCalls)) {
-                $contents[] = [
-                    'role' => 'model',
-                    'parts' => $modelParts,
+        if (! $response || ! $response->successful()) {
+            return [
+                'reply' => 'Maaf kijiye, abhi AI server se connect hone me samasya aa rahi hai. Kripya thodi der me dobara try karein.',
+                'actions' => [],
+                'audio' => null,
+                'cached' => false,
+            ];
+        }
+
+        $result = $response->json();
+        $candidate = $result['candidates'][0] ?? null;
+        $parts = $candidate['content']['parts'] ?? [];
+        $actionsExecuted = [];
+        $functionCalls = [];
+        $modelParts = [];
+        $finalText = '';
+
+        foreach ($parts as $part) {
+            if (isset($part['functionCall'])) {
+                $functionCall = $part['functionCall'];
+                $functionName = $functionCall['name'];
+                $args = $functionCall['args'] ?? [];
+
+                $toolResult = $this->executeTool($functionName, $args, $erpContext);
+                $actionsExecuted[] = [
+                    'tool' => $functionName,
+                    'args' => $args,
+                    'result' => $toolResult,
                 ];
+                $functionCalls[] = [
+                    'name' => $functionName,
+                    'result' => $toolResult,
+                ];
+                $modelParts[] = $part;
+            } elseif (isset($part['text'])) {
+                $finalText .= $part['text'];
+                $modelParts[] = $part;
+            }
+        }
 
-                $functionResponseParts = [];
-                foreach ($functionCalls as $fc) {
-                    $functionResponseParts[] = [
-                        'functionResponse' => [
+        // 🤖 TRUE 2-TURN GEMINI REASONING: Feed real ERP database tool results back to Gemini
+        if (! empty($functionCalls)) {
+            $contents[] = [
+                'role' => 'model',
+                'parts' => $modelParts,
+            ];
+
+            $functionResponseParts = [];
+            foreach ($functionCalls as $fc) {
+                $functionResponseParts[] = [
+                    'functionResponse' => [
+                        'name' => $fc['name'],
+                        'response' => [
                             'name' => $fc['name'],
-                            'response' => [
-                                'name' => $fc['name'],
-                                'content' => $fc['result'],
-                            ],
+                            'content' => $fc['result'],
                         ],
-                    ];
-                }
-
-                $contents[] = [
-                    'role' => 'user',
-                    'parts' => $functionResponseParts,
-                ];
-
-                $secondPayload = [
-                    'contents' => $contents,
-                    'systemInstruction' => [
-                        'parts' => [['text' => $systemInstruction]],
-                    ],
-                    'generationConfig' => [
-                        'temperature' => 0.2,
-                        'maxOutputTokens' => 400,
                     ],
                 ];
-
-                try {
-                    $secondResponse = Http::timeout(15)
-                        ->connectTimeout(5)
-                        ->withHeaders(['Content-Type' => 'application/json'])
-                        ->post($url, $secondPayload);
-
-                    if ($secondResponse->successful()) {
-                        $secondResult = $secondResponse->json();
-                        $secondText = $secondResult['candidates'][0]['content']['parts'][0]['text'] ?? '';
-                        if (! empty(trim($secondText))) {
-                            $finalText = trim($secondText);
-                        }
-                    }
-                } catch (\Throwable $e) {
-                    Log::warning('Gemini 2nd turn natural reply timeout, using fallback: ' . $e->getMessage());
-                }
             }
+
+            $contents[] = [
+                'role' => 'user',
+                'parts' => $functionResponseParts,
+            ];
+
+            $secondPayload = [
+                'contents' => $contents,
+                'systemInstruction' => [
+                    'parts' => [['text' => $systemInstruction]],
+                ],
+                'generationConfig' => [
+                    'temperature' => 0.2,
+                    'maxOutputTokens' => 400,
+                ],
+            ];
+
+            $turn2Url = "{$this->baseUrl}/models/{$activeModel}:generateContent?key={$this->apiKey}";
+            try {
+                $secondResponse = Http::timeout(12)
+                    ->connectTimeout(5)
+                    ->withHeaders(['Content-Type' => 'application/json'])
+                    ->post($turn2Url, $secondPayload);
+
+                if ($secondResponse->successful()) {
+                    $secondResult = $secondResponse->json();
+                    $secondText = $secondResult['candidates'][0]['content']['parts'][0]['text'] ?? '';
+                    if (! empty(trim($secondText))) {
+                        $finalText = trim($secondText);
+                    }
+                }
+            } catch (\Throwable $e) {
+                Log::warning('Gemini 2nd turn natural reply timeout, using fallback: ' . $e->getMessage());
+            }
+        }
 
             $finalText = trim($finalText);
             if (empty($finalText) && ! empty($actionsExecuted)) {
