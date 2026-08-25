@@ -146,7 +146,7 @@ class GeminiAiService
                     ],
                     [
                         'name' => 'create_bill',
-                        'description' => 'Create and generate a customer sale invoice/bill for a barcoded showroom stock item (gold or silver) in the ERP. A valid product stock barcode (e.g. G00019, S00005) is STRICTLY MANDATORY.',
+                        'description' => 'Create and generate a customer sale invoice/bill for a barcoded showroom stock item (gold or silver) in the ERP. Product barcode, customer name, and customer 10-digit mobile number are ALL STRICTLY MANDATORY.',
                         'parameters' => [
                             'type' => 'OBJECT',
                             'properties' => [
@@ -156,11 +156,11 @@ class GeminiAiService
                                 ],
                                 'customer_name' => [
                                     'type' => 'STRING',
-                                    'description' => 'Customer full name (do NOT invent dummy names; leave empty or "Walk-in Customer" if not provided)',
+                                    'description' => 'Mandatory customer full name (e.g. Ramesh Verma). Never invent fake names.',
                                 ],
                                 'customer_phone' => [
                                     'type' => 'STRING',
-                                    'description' => 'Customer 10-digit mobile number (do NOT invent dummy numbers; leave empty if not provided)',
+                                    'description' => 'Mandatory customer 10-digit mobile number (e.g. 9811223344). Never invent fake numbers.',
                                 ],
                                 'rate_per_gm' => [
                                     'type' => 'NUMBER',
@@ -191,7 +191,7 @@ class GeminiAiService
                                     'description' => 'Discount in INR (optional)',
                                 ],
                             ],
-                            'required' => ['barcode'],
+                            'required' => ['barcode', 'customer_name', 'customer_phone'],
                         ],
                     ],
                     [
@@ -410,17 +410,19 @@ class GeminiAiService
         You understand Hindi, English, and Hinglish naturally.
 
         ERP POS BILLING & INVOICE WORKFLOW (INTERACTIVE QUESTIONING):
-        When a user wants to generate a bill (e.g. 'Barcode G00019 ka bill bana do' or '15g chain ka bill banao' or 'bill banana hai'):
-        Do NOT create the bill right away if essential fields are missing. Interactively ask the user step-by-step:
-        1. Customer Details:
+        When a user wants to generate a bill (e.g. 'Barcode G00019 ka bill bana do' or 'Ramesh ji ke liye G00021 ka bill banao'):
+        Do NOT create the bill right away if any essential field is missing. Interactively ask the user:
+        1. MANDATORY CUSTOMER NAME & 10-DIGIT MOBILE NUMBER:
+           - Every bill in this ERP MUST have a real Customer Name and a valid 10-digit Mobile Number.
            - NEVER invent or hallucinate fake names (like 'Rahul Sharma', 'Amit') or fake numbers (like '9876543210').
-           - If customer name or mobile number is not provided, you can use 'Walk-in Customer'.
+           - If customer name or mobile number is missing, DO NOT call `create_bill`. Interactively ask:
+             'Customer ka naam aur 10-digit mobile number batayein.'
         2. MANDATORY PRODUCT BARCODE:
-           - In this jewellery showroom ERP, a bill can ONLY be created for an existing barcoded stock product (e.g. 'G00019', 'G00021', 'S00005').
-           - If user asks to create a bill without providing a barcode (e.g. '15g chain ka bill bana do' or 'Rohan ke liye bill bana do'):
-             DO NOT call `create_bill`. Ask: 'Kripya item ka Barcode batayein ya scan karein (e.g. G00021). Showroom billing ke liye barcode anivary hai.'
-           - If user provides a barcode (e.g. 'G00021' or 'barcode G00021 ka bill banao'):
-             Call `create_bill` with `barcode: 'G00021'`, `customer_name`, `customer_phone`, and payment details. The ERP will automatically load the item's authentic name, weight, purity, and making charges directly from database stock.
+           - In this showroom ERP, every bill MUST have an authentic stock product barcode (e.g. 'G00019', 'G00021', 'S00005').
+           - If barcode is not provided, DO NOT call `create_bill`. Ask: 'Kripya item ka Barcode batayein ya scan karein (e.g. G00021). Barcode ke bina bill create nahi ho sakta.'
+        3. EXECUTION:
+           - Once customer name, 10-digit mobile number, and barcode are all collected:
+             Call `create_bill` with `barcode`, `customer_name`, `customer_phone`, and payment details. The ERP will automatically load item name, weight, purity, and making charges directly from database stock.
 
         ESTIMATE QUOTATION & BARCODE FLOW:
         - When a user asks for an estimate / quotation by barcode (e.g. 'G00075 ka estimate bana do', 'G00075 barcode ka quotation nikalo', 'is barcode ka estimate'):
