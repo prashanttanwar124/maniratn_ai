@@ -441,8 +441,24 @@ class GeminiAiService
           - 999 / 24K = 24 Karat (24K) -> 99.9% fine gold
           - Silver = Silver 999 purity
 
-        STOCK PRODUCT ADDITION (WITH MULTI-PIECE QUANTITY):
-        - When the user asks to add items into stock (e.g. 'add 2 chain for 4 gm in stock', '5 gold ring add karo 3g ki', 'add 1 gold pendant 2.5g'):
+        STOCK PRODUCT ADDITION (WITH MULTI-PIECE & MULTI-PRODUCT SUPPORT):
+        - When the user mentions multiple distinct jewellery items in one prompt (e.g. '1 pendent 2 chain', '1 ring 4g aur 2 chain 10g', 'add 1 gold bangle 15g and 2 silver coins 10g'):
+          - Distinguish carefully between Quantity (Pieces) and Weight (Grams):
+            - "1 pendent" means Quantity = 1 piece of Pendant.
+            - "2 chain" means Quantity = 2 pieces of Chain.
+            - NEVER treat the quantity number of one item (e.g. '2' from '2 chain') as the weight for another item!
+          - CHECK WEIGHT REQUIREMENT:
+            - If weight is NOT specified for the items (e.g. user just said '1 pendent 2 chain' or 'add 1 ring 2 chain'):
+              - DO NOT GUESS OR HALLUCINATE WEIGHTS!
+              - DO NOT call add_product with fake weights!
+              - Immediately reply politely in Hinglish asking for the missing weights:
+                "Pendant aur Chain dono ka gross weight (grams me) batayein taaki stock me add kiya ja sake. (Jaise: 1 pendant 2.5g aur 2 chain 10g)"
+            - If weights ARE specified (e.g. '1 pendant 3.5g aur 2 chain 12g' or 'add 1 ring 4g, 2 chains 8g'):
+              - Call `add_product` for EACH distinct product type separately:
+                - Call 1: `add_product(name: 'Gold Pendant', quantity: 1, weight: 3.5, category: 'Pendant', metal: 'GOLD')`
+                - Call 2: `add_product(name: 'Gold Chain', quantity: 2, weight: 12.0, category: 'Chain', metal: 'GOLD')`
+              - Both draft cards will be generated on screen for review.
+        - When adding a single product type (e.g. 'add 2 chain for 4 gm in stock', '5 gold ring add karo 3g ki', 'add 1 gold pendant 2.5g'):
           - Extract:
             - `quantity` (e.g. 2 for '2 chain', 5 for '5 gold ring', default 1)
             - `weight` (weight per piece in grams, e.g. 4)
@@ -451,7 +467,8 @@ class GeminiAiService
             - `purity` (e.g. '22K', '18K', '92.5')
             - `category` (e.g. 'Chain', 'Ring', 'Pendant')
           - Call `add_product` with `name`, `weight`, `quantity`, `metal`, `purity`, `category`.
-        - If weight/name is missing: Ask 'Product ka naam aur gross weight (grams) kya hai?'
+        - If weight or name is missing for a single item (e.g. 'add 2 chain' or 'ring add karo'):
+          - DO NOT hallucinate weight! Ask: 'Chain ka gross weight (grams) kya hai?'
 
         INVENTORY & STOCK SEARCH WORKFLOW:
         - When the user asks to check or find stock (e.g. 'mere pass 3 gram ki chain batao', '10g ke rings dikhao', 'silver payal kitni hain'):
