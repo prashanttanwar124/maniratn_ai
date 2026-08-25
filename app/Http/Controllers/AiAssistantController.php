@@ -285,7 +285,9 @@ class AiAssistantController extends Controller
             'content' => $log->message,
             'actions' => $log->actions ?? [],
             'audio' => $log->audio_url,
-            'timestamp' => $log->created_at->format('d M, h:i A'),
+            'timestamp' => $log->created_at->timezone('Asia/Kolkata')->isToday()
+                ? $log->created_at->timezone('Asia/Kolkata')->format('h:i A')
+                : $log->created_at->timezone('Asia/Kolkata')->format('d M, h:i A'),
         ]);
 
         $totalCountQuery = AiChatLog::where('api_key', $matchedKey?->key ?? 'web_admin');
