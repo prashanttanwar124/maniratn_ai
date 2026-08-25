@@ -264,6 +264,10 @@ class AiAssistantController extends Controller
             $query->where('api_key', 'web_admin');
         }
 
+        if ($request->filled('session_id')) {
+            $query->where('session_id', $request->input('session_id'));
+        }
+
         if ($request->filled('before_id')) {
             $query->where('id', '<', (int) $request->input('before_id'));
         }
@@ -284,11 +288,16 @@ class AiAssistantController extends Controller
             'timestamp' => $log->created_at->format('d M, h:i A'),
         ]);
 
+        $totalCountQuery = AiChatLog::where('api_key', $matchedKey?->key ?? 'web_admin');
+        if ($request->filled('session_id')) {
+            $totalCountQuery->where('session_id', $request->input('session_id'));
+        }
+
         return response()->json([
             'messages' => $messages,
             'has_more' => $hasMore,
             'oldest_id' => $logs->first()?->id,
-            'total_count' => AiChatLog::where('api_key', $matchedKey?->key ?? 'web_admin')->count(),
+            'total_count' => $totalCountQuery->count(),
         ]);
     }
 
@@ -325,12 +334,34 @@ class AiAssistantController extends Controller
      */
     public function updateAction(Request $request): JsonResponse
     {
-        $logId = $request->input('message_id');
+        $bearerToken = $request->bearerToken();
+        $apiKeyParam = $request->input('api_key', $bearerToken);
+
+        if (empty($apiKeyParam) && ! auth()->check()) {
+            return response()->json(['error' => 'Unauthorized: Missing API Key'], 401);
+        }
+
+        $matchedKey = null;
+        if (! empty($apiKeyParam)) {
+            $matchedKey = AiApiKey::where('key', $apiKeyParam)->first();
+            if (! $matchedKey) {
+                return response()->json(['error' => 'Unauthorized: Invalid API Key'], 401);
+            }
+        }
+
+        $logId = $request->input('message_id') ?? $request->input('log_id');
         $actions = $request->input('actions');
         $reply = $request->input('reply');
 
         if ($logId) {
-            $log = AiChatLog::find($logId);
+            $query = AiChatLog::where('id', $logId);
+            if ($matchedKey) {
+                $query->where('api_key', $matchedKey->key);
+            } else {
+                $query->where('api_key', 'web_admin');
+            }
+
+            $log = $query->first();
             if ($log) {
                 if ($actions !== null) {
                     $log->actions = $actions;
@@ -339,6 +370,8 @@ class AiAssistantController extends Controller
                     $log->message = $reply;
                 }
                 $log->save();
+            } else {
+                return response()->json(['error' => 'Chat log not found or unauthorized'], 404);
             }
         }
 
