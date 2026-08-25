@@ -309,6 +309,32 @@ class GeminiAiService
                             ],
                         ],
                     ],
+                    [
+                        'name' => 'calculate_old_gold',
+                        'description' => 'Calculate old gold / purana sona buyback valuation and exchange price when customer brings old gold ornaments to showroom. Has NO making charges and NO GST.',
+                        'parameters' => [
+                            'type' => 'OBJECT',
+                            'properties' => [
+                                'weight' => [
+                                    'type' => 'NUMBER',
+                                    'description' => 'Gross weight of old gold in grams (e.g. 12, 15.5)',
+                                ],
+                                'purity' => [
+                                    'type' => 'STRING',
+                                    'description' => 'Purity or karat of old gold (e.g. 17K, 18K, 22K, 916, 75%, 85%, etc.)',
+                                ],
+                                'deduction_percent' => [
+                                    'type' => 'NUMBER',
+                                    'description' => 'Melting or testing deduction percentage (optional, default 0)',
+                                ],
+                                'item_name' => [
+                                    'type' => 'STRING',
+                                    'description' => 'Description of old gold ornament (e.g. Purana Sona / Old Gold Chain)',
+                                ],
+                            ],
+                            'required' => ['weight'],
+                        ],
+                    ],
                 ],
             ],
         ];
@@ -453,6 +479,15 @@ class GeminiAiService
         PREVIOUS INVOICE / PURCHASE SEARCH FLOW:
         - When user asks to search past bills or purchase history (e.g. '9876543210 ka pichla bill dikhao', 'Ravi Verma ne pichla bill kab banwaya tha', 'Bill INV-0001 search karo'):
           - Call `search_invoices` with `phone`, `customer_name`, or `invoice_number`.
+
+        OLD GOLD BUYBACK & EXCHANGE VALUATION FLOW:
+        - When the user asks about OLD GOLD, PURANA SONA, EXCHANGE, or BUYBACK (e.g. '12 gram old gold 17k purity est', 'customer 15g 18k purana sona laya hai', 'old gold ka bhav kya banega'):
+          - Call `calculate_old_gold` with:
+            - `weight`: weight in grams (e.g. 12)
+            - `purity`: exact purity/karat requested (e.g. '17K', '18K', '22K', '20K', '85%')
+            - `item_name`: 'Old Gold / Purana Sona'
+          - DO NOT call `calculate_estimate` for old gold buyback!
+          - Note: Old gold purchase from customer does NOT have Making charges and does NOT have GST!
 
         SHOWROOM SALES & COUNTER SUMMARY FLOW:
         - When user asks for sales report or counter collections (e.g. 'Aaj ki sale kitni hui?', 'Aaj kitna sona bika?', 'Total counter collection kitna hai?', 'Kal ki sale kya thi?'):
@@ -877,6 +912,49 @@ class GeminiAiService
                 return [
                     'status' => 'FORWARD_TO_ERP',
                     'period' => $args['period'] ?? 'today',
+                ];
+
+            case 'calculate_old_gold':
+            case 'old_gold_estimate':
+                $weight = floatval($args['weight'] ?? 10);
+                $purityStr = strtoupper(trim((string) ($args['purity'] ?? '22K')));
+                $purityMultiplier = 0.916;
+                $resolvedPurity = '22K (916 Hallmark)';
+                if (preg_match('/(\d+(?:\.\d+)?)\s*K/i', $purityStr, $m)) {
+                    $karat = floatval($m[1]);
+                    $purityMultiplier = round($karat / 24, 4);
+                    $pct = round(($karat / 24) * 100, 2);
+                    $resolvedPurity = "{$karat}K ({$pct}%)";
+                } elseif (preg_match('/(\d+(?:\.\d+)?)\s*%/i', $purityStr, $m)) {
+                    $pct = floatval($m[1]);
+                    $purityMultiplier = round($pct / 100, 4);
+                    $karat = round(($pct / 100) * 24, 1);
+                    $resolvedPurity = "{$pct}% ({$karat}K)";
+                } elseif (str_contains($purityStr, '24K') || str_contains($purityStr, '999')) {
+                    $purityMultiplier = 1.0;
+                    $resolvedPurity = '24K (99.9%)';
+                } elseif (str_contains($purityStr, '18K') || str_contains($purityStr, '750')) {
+                    $purityMultiplier = 0.750;
+                    $resolvedPurity = '18K (750 Hallmark)';
+                } elseif (str_contains($purityStr, '14K') || str_contains($purityStr, '585')) {
+                    $purityMultiplier = 0.585;
+                    $resolvedPurity = '14K (585 Hallmark)';
+                }
+
+                $base24kBuyRate = floatval($rates['gold_buy'] ?? ($rates['gold_sell'] ?? 7000));
+                $ratePerGm = round($base24kBuyRate * $purityMultiplier, 2);
+                $fineGold = round($weight * $purityMultiplier, 3);
+                $totalValuation = round($weight * $ratePerGm, 2);
+
+                return [
+                    'item_name' => $args['item_name'] ?? 'Old Gold / Purana Sona',
+                    'weight' => $weight . ' g',
+                    'purity' => $resolvedPurity,
+                    'fine_gold_weight' => $fineGold . ' g (24K Pure)',
+                    'base_24k_rate' => '₹' . number_format($base24kBuyRate, 2),
+                    'rate_per_gm' => '₹' . number_format($ratePerGm, 2),
+                    'total_estimate' => '₹' . number_format($totalValuation, 2),
+                    'note' => 'No Making Charges, No GST',
                 ];
 
             default:
