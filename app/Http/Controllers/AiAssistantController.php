@@ -209,7 +209,10 @@ class AiAssistantController extends Controller
         ]);
 
         $erpContext = $request->input('erp_context', []);
+        $startTime = microtime(true);
         $result = $this->geminiService->chat($userMessage, $history, $voice, $includeAudio, $erpContext);
+        $durationSeconds = round(microtime(true) - $startTime, 2);
+        $duration = round($durationSeconds, 1) . 's';
 
         $replyMessage = ! empty($result['reply'])
             ? $result['reply']
@@ -228,11 +231,14 @@ class AiAssistantController extends Controller
             'audio_url' => $result['audio'] ?? null,
             'metadata' => [
                 'cached' => $result['cached'] ?? false,
+                'duration' => $duration,
+                'duration_seconds' => $durationSeconds,
             ],
         ]);
 
         $result['log_id'] = $assistantLog->id;
         $result['message_id'] = (string) $assistantLog->id;
+        $result['duration'] = $duration;
 
         return response()->json($result);
     }
@@ -285,6 +291,7 @@ class AiAssistantController extends Controller
             'content' => $log->message,
             'actions' => $log->actions ?? [],
             'audio' => $log->audio_url,
+            'duration' => $log->metadata['duration'] ?? null,
             'timestamp' => $log->created_at->timezone('Asia/Kolkata')->isToday()
                 ? $log->created_at->timezone('Asia/Kolkata')->format('h:i A')
                 : $log->created_at->timezone('Asia/Kolkata')->format('d M, h:i A'),
