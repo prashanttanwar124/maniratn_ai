@@ -216,7 +216,7 @@ class AiAssistantController extends Controller
             : (! empty($result['actions']) ? 'Aapke command ke anusar action draft prepare kar diya hai.' : 'Done');
 
         // 2. Log Assistant Response into Database
-        AiChatLog::create([
+        $assistantLog = AiChatLog::create([
             'api_key_id' => $matchedKey?->id,
             'api_key' => $matchedKey?->key ?? 'web_admin',
             'store_url' => $storeUrl,
@@ -230,6 +230,9 @@ class AiAssistantController extends Controller
                 'cached' => $result['cached'] ?? false,
             ],
         ]);
+
+        $result['log_id'] = $assistantLog->id;
+        $result['message_id'] = (string) $assistantLog->id;
 
         return response()->json($result);
     }
