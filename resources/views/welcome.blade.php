@@ -6,6 +6,15 @@
 
         <title>{{ config('app.name', 'Laravel') }}</title>
 
+        <link rel="icon" type="image/svg+xml" href="/favicon_v2.svg">
+        <link rel="icon" type="image/png" sizes="96x96" href="/favicon_v2-96x96.png">
+        <link rel="icon" type="image/png" sizes="48x48" href="/favicon_v2-48x48.png">
+        <link rel="icon" type="image/png" sizes="192x192" href="/favicon_v2-192x192.png">
+        <link rel="icon" type="image/png" sizes="32x32" href="/favicon_v2-32x32.png">
+        <link rel="icon" type="image/png" sizes="16x16" href="/favicon_v2-16x16.png">
+        <link rel="shortcut icon" href="/favicon_v2.ico">
+        <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon_v2.png">
+
         @fonts
 
         <!-- Styles / Scripts -->
